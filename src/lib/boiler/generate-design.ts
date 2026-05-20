@@ -38,6 +38,71 @@ export interface GenerateDesignOptions {
    * tuned yet. Default: false (verification ALWAYS runs in production).
    */
   skipVerification?: boolean;
+  /**
+   * When true, skip BACK-face generation even for narrative structures. The
+   * Inngest handler sets this so it can run the back face in a SEPARATE step
+   * (front gen + back gen in ONE step exceeds Vercel's 60s function limit →
+   * 504 timeout). Direct callers (eval scripts) leave it false to get the
+   * full front+back in a single call. Default: false.
+   */
+  skipBackFace?: boolean;
+}
+
+export interface GenerateBackFaceResult {
+  backArtworkUrl: string | null;
+  backCloudinaryPublicId: string | null;
+  backPromptUsed: string | null;
+}
+
+/**
+ * Generate the BACK face from the front image (provided as base64).
+ *
+ * Extracted from generateDesign so the Inngest handler can run it in its OWN
+ * step. Each Inngest step on Vercel is a separate function invocation with its
+ * own timeout budget; front gen + back gen in a single step blows past the 60s
+ * Vercel limit (the 504 regression PR-C introduced). The handler fetches the
+ * just-uploaded front from Cloudinary → base64 → here, keeping the heavy
+ * base64 OUT of the step-result boundary.
+ *
+ * Fail-soft: returns all-null on ANY error so a missing back never sinks the
+ * front (which the caller has already generated + persisted).
+ */
+export async function generateBackFace(
+  input: GenerateDesignInput,
+  frontImageBase64: string,
+): Promise<GenerateBackFaceResult> {
+  const folder = `blips/boiler-v2/${input.context.shortcode}`;
+  const publicIdHint = `${input.context.shortcode.toLowerCase()}-v${Date.now()}-${input.tier}-back`;
+  try {
+    const backPromptUsed = buildGarmentSystemBackPrompt(input);
+    const backResult = await generateImageViaResponses({
+      prompt: backPromptUsed,
+      tier: input.tier,
+      previousImageBase64: frontImageBase64, // the front is the /edits base
+      width: DESIGN_DIMENSIONS.width,
+      height: DESIGN_DIMENSIONS.height,
+    });
+    const backUpload = await uploadBase64Image(backResult.imageBase64, {
+      folder,
+      publicIdHint,
+      overwrite: false,
+    });
+    return {
+      backArtworkUrl: backUpload.optimizedUrl,
+      backCloudinaryPublicId: backUpload.publicId,
+      backPromptUsed,
+    };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.warn(
+      `[generate-design] back-face generation failed (fail-soft): ${msg}. Front persists; back unset.`,
+    );
+    return {
+      backArtworkUrl: null,
+      backCloudinaryPublicId: null,
+      backPromptUsed: null,
+    };
+  }
 }
 
 /**
@@ -128,39 +193,23 @@ export async function generateDesign(
   // Generate the second beat via /edits FROM the front image so the shared
   // system + palette stay consistent and only the narrative variable changes.
   // Only on fresh generations (refine/branch already chain from a parent).
+  //
+  // skipBackFace: the Inngest handler runs the back face in its OWN step
+  // instead (front gen + back gen in a single step exceeds Vercel's 60s limit
+  // → 504). Direct callers (evals) leave it off and get front+back in one go.
   let backArtworkUrl: string | null = null;
   let backCloudinaryPublicId: string | null = null;
   let backPromptUsed: string | null = null;
   if (
+    !options.skipBackFace &&
     !input.parent &&
     !input.refinementInstruction &&
     needsBackFace(input.furnaceBrief)
   ) {
-    try {
-      backPromptUsed = buildGarmentSystemBackPrompt(input);
-      const backResult = await generateImageViaResponses({
-        prompt: backPromptUsed,
-        tier: input.tier,
-        previousImageBase64: imageResult.imageBase64, // the front is the base
-        width: DESIGN_DIMENSIONS.width,
-        height: DESIGN_DIMENSIONS.height,
-      });
-      const backUpload = await uploadBase64Image(backResult.imageBase64, {
-        folder,
-        publicIdHint: `${publicIdHint}-back`,
-        overwrite: false,
-      });
-      backArtworkUrl = backUpload.optimizedUrl;
-      backCloudinaryPublicId = backUpload.publicId;
-    } catch (e: unknown) {
-      // Fail-soft: a missing back face shouldn't sink the whole design.
-      // The front is real + persisted; the renderer falls back to front.
-      const msg = e instanceof Error ? e.message : String(e);
-      console.warn(
-        `[generate-design] back-face generation failed (fail-soft): ${msg}. Front persists; back unset.`,
-      );
-      backPromptUsed = null;
-    }
+    const back = await generateBackFace(input, imageResult.imageBase64);
+    backArtworkUrl = back.backArtworkUrl;
+    backCloudinaryPublicId = back.backCloudinaryPublicId;
+    backPromptUsed = back.backPromptUsed;
   }
 
   // ─── Verify output (vision-LLM-as-judge) ─────────────────────────
