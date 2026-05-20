@@ -109,6 +109,45 @@ export interface FurnaceBriefForBoiler {
       "hem" | "shoulders" | "sleeves" | "back_yoke" | "collar" | "side_seams"
     >;
   } | null;
+
+  // ─── Garment-design system (PR-A, May 20 2026 — validated recipe) ──
+  // The high-level design DECISIONS. When frontLayout is present, BOILER
+  // uses the garment-system prompt path (the validated assembler that
+  // produced the founder-approved output); else falls back to the
+  // prose/#67-spec path. All optional for backward compatibility.
+
+  /** Front/back relationship, read from the signal's shape. */
+  garmentStructure?:
+    | "front_back_narrative"
+    | "front_led_solid_back"
+    | "colorway_pair"
+    | "type_only"
+    | null;
+
+  /** The dominant visual system (radial/linear/compression/.../overwrite/grid). */
+  dominantSystem?: string | null;
+
+  /** Why the system mirrors the signal's tension. */
+  systemRationale?: string | null;
+
+  /** (narrative only) the one element that changes front→back. */
+  narrativeVariable?: string | null;
+
+  /** Element-by-element FRONT wiring diagram — the validated quality driver. */
+  frontLayout?: Array<{
+    element: string;
+    position: string;
+    inkRole: string;
+    treatment: string;
+  }> | null;
+
+  /** Element-by-element BACK wiring diagram (narrative / colorway_pair). */
+  backLayout?: Array<{
+    element: string;
+    position: string;
+    inkRole: string;
+    treatment: string;
+  }> | null;
 }
 
 /**
