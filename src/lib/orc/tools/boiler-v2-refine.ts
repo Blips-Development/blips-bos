@@ -26,7 +26,7 @@ import type { OrcToolContext } from "./types";
 export function boilerV2RefineTool(ctx: OrcToolContext) {
   return tool({
     description:
-      "Refine the currently-active BOILER design with a specific instruction. The instruction should be concrete and actionable (e.g. 'tighten the front text tracking', 'push the square down 5 units', 'drop the inner glow intensity 30%'). gpt-image-1 sees the parent image and modifies only what's requested. Requires an active version — call generate_design first if there's nothing on the canvas. Tier defaults to 'medium' ($0.053).",
+      "Regenerate the active BOILER design's ARTWORK with a concrete change, chaining off the current image — THE workhorse for iterating a design. Use for ANY visual change to what the design looks like: 'add a blue background', 'remove the waves', 'make the castle bigger', 'tighten the front text', 'shift the composition left', 'more texture/grit', 'change the ring colour in the art'. The model sees the parent image and modifies only what's requested, then a NEW version lands on the canvas. This is what actually puts a revised image on screen — calling it (not describing it) is what generates. Requires an active version (call generate first if the canvas is empty). For changing ONLY the garment/tee colour spec, use set_color instead. Tier defaults to 'medium' ($0.053).",
     inputSchema: z.object({
       instruction: z
         .string()
