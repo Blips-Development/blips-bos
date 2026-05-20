@@ -358,7 +358,11 @@ function formatCompositionMeta(meta: CompositionMeta): string {
  */
 function buildGarmentSystemFrontPrompt(input: GenerateDesignInput): string {
   const { context, furnaceBrief } = input;
-  const fl = furnaceBrief.frontLayout ?? [];
+  // frontLayout is a prose wiring diagram, " | "-separated (one element per segment).
+  const flSegments = (furnaceBrief.frontLayout ?? "")
+    .split("|")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
   const palette = furnaceBrief.colorPalette ?? [];
   const frontPhrase = furnaceBrief.exactText?.front?.trim() || context.framingHook;
 
@@ -371,10 +375,7 @@ function buildGarmentSystemFrontPrompt(input: GenerateDesignInput): string {
           `- accent_ink: ${input.paletteRoles.ring_inner}`,
         ];
 
-  const layoutLines = fl.map(
-    (e, i) =>
-      `${i + 1}. ${e.element} — position: ${e.position} — ink: ${e.inkRole} — ${e.treatment}`,
-  );
+  const layoutLines = flSegments.map((seg, i) => `${i + 1}. ${seg}`);
 
   return [
     `Flat artwork for a premium philosophical-apparel t-shirt, transparent background, ready for screen print. FRONT face.`,

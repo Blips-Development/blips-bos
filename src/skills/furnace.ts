@@ -332,48 +332,19 @@ const briefSectionsSchema = z
         "ONLY when garmentStructure='front_back_narrative': the single element that CHANGES from front to back to tell the two-beat story (PAPER-RCK: 'the square's position — at the ring origin on front, displaced lower-right on back'). The shared system stays constant; this is the one variable. Null otherwise and when refused=true.",
       ),
     frontLayout: z
-      .array(
-        z.object({
-          element: z
-            .string()
-            .min(3)
-            .max(120)
-            .describe("What the element IS (e.g. 'concentric ring field', 'small square object outline', 'vertical text column')."),
-          position: z
-            .string()
-            .min(3)
-            .max(120)
-            .describe("EXACT position, anchored to a garment landmark, NOT vague (e.g. 'origin point center-right of chest', '3 inches below front collar', 'left chest edge'). Never 'somewhere in the middle'."),
-          inkRole: z
-            .string()
-            .min(2)
-            .max(40)
-            .describe("Which colorPalette role this element uses (e.g. 'front_ink', 'ring_inner')."),
-          treatment: z
-            .string()
-            .max(160)
-            .describe("How it's rendered (e.g. '1pt outline, fades not cut', 'Syne 800 tight tracking 90° CCW', 'solid fill')."),
-        }),
-      )
-      .min(2)
-      .max(8)
+      .string()
+      .min(120)
+      .max(1600)
       .nullable()
       .describe(
-        "Element-by-element FRONT-face layout — the wiring diagram. Each element with exact landmark-anchored position + ink role + treatment. This is what was missing from prose-only briefs. 2-8 elements (multi-element is required; minimal = weak). Null when refused=true.",
+        "Element-by-element FRONT-face layout — the WIRING DIAGRAM, as prose. One line per element, separated by ' | '. Each element: WHAT it is + EXACT landmark-anchored position + ink role + treatment. Example: 'Concentric ring field — origin center-right of chest, fades off all edges, ring_inner ink, outer rings near-invisible fade not cut | Square outline — dead center at ring origin, front_ink, outline only | Crosshair — through origin, 1pt, ring_outer, faint | Text AHEAD ON PAPER. — left chest, 90° CCW vertical, front_ink, Syne 800 tight tracking'. MULTI-ELEMENT REQUIRED — 3+ elements (a single mark + caption is NOT a BLIPS design). Positions anchored to garment landmarks, NEVER 'somewhere in the middle'. Null when refused=true.",
       ),
     backLayout: z
-      .array(
-        z.object({
-          element: z.string().min(3).max(120),
-          position: z.string().min(3).max(120),
-          inkRole: z.string().min(2).max(40),
-          treatment: z.string().max(160),
-        }),
-      )
-      .max(8)
+      .string()
+      .max(1600)
       .nullable()
       .describe(
-        "Element-by-element BACK-face layout. Populated when garmentStructure is 'front_back_narrative' or 'colorway_pair'. For narrative: the SAME system as frontLayout with the narrativeVariable applied. Empty array or null for 'front_led_solid_back' (a single quiet mark at most) and 'type_only'. Null when refused=true.",
+        "Element-by-element BACK-face layout, as prose (same ' | '-separated format as frontLayout). Populated when garmentStructure is 'front_back_narrative' or 'colorway_pair' — the SAME system as frontLayout with the narrativeVariable applied. Empty string or null for 'front_led_solid_back' (one quiet mark at most) and 'type_only'. Null when refused=true.",
       ),
 
     // ─── DESIGN-STAGE SPECIFICATION (Phase 11D FURNACE schema upgrade)
@@ -731,7 +702,7 @@ You write INSTRUCTIONS, not vibes. A great brief reads like a wiring diagram —
   radial (fields you're inside) · linear (a path that climbs/falls/breaks) · compression (squeezed by forces) · scatter (fragments/distance) · orbit (things revolving around you) · strata (accumulation/buried layers) · contour (depth/terrain) · threshold (a turning point/horizon crossed) · fracture (a break/divergence) · erosion (loss/fading) · tally (counting/one exception) · measure (judgment/calibration) · overwrite (a self under a new one) · grid (use sparingly).
   Example mappings: "endless climb" → linear; "compressed from both ends" → compression; "fluent in corporate over a native self" → overwrite; "the day is past noon" → threshold. Set systemRationale (one sentence on why the structure matches).
 
-3c. frontLayout / backLayout — the WIRING DIAGRAM. Each element: what it IS + EXACT position (anchored to a garment landmark like "3 inches below front collar" / "origin center-right of chest" / "left chest edge" — NEVER "somewhere in the middle") + which colorPalette inkRole + treatment (weight/tracking/line-weight/fade). frontLayout: 2-8 elements. MULTI-ELEMENT IS REQUIRED — a single mark + a caption is NOT a BLIPS design. backLayout: same system as front with the narrativeVariable applied (narrative), or empty/one-mark (solid-back).
+3c. frontLayout / backLayout — the WIRING DIAGRAM, written as PROSE (a single string, one element per line separated by " | "). Each element: what it IS + EXACT position (anchored to a garment landmark like "3 inches below front collar" / "origin center-right of chest" / "left chest edge" — NEVER "somewhere in the middle") + which colorPalette inkRole + treatment (weight/tracking/line-weight/fade). MULTI-ELEMENT IS REQUIRED — 3+ elements; a single mark + a caption is NOT a BLIPS design. backLayout: same system as front with the narrativeVariable applied (narrative), or empty/one-mark (solid-back).
 
 3d. ANTI-LITERAL — ABSOLUTE. This is abstract conceptual design, NOT illustration. NEVER instruct human figures, faces, people, bodies, hands. NEVER literal depiction of the concept's subject (a music signal does NOT get a literal record/note; a family signal does NOT get literal faces; a calendar signal does NOT get a literal calendar). Abstract the concept into a geometric RELATIONSHIP. Literal illustration is the #1 failure mode — it makes the design generic and cheap.
 
@@ -742,8 +713,8 @@ WORKED EXAMPLE — PAPER-RCK (this is the bar; match this specificity):
   narrativeVariable: the square's position — at the ring origin on front (in control), displaced lower-right between ring 3 and 4 on back with a dashed ghost-trail to the origin (something's off)
   dominantSystem: radial
   systemRationale: a radial field you are inside mirrors the feeling of being measured by a system you can't see the edge of
-  frontLayout: [ring field origin center-right of chest / fades off all edges / ring_inner / outer rings near-invisible fade not cut], [crosshair through origin / 1pt / ring_outer / faint], [square object outline / dead center at ring origin / front_ink / outline only], [text "AHEAD ON PAPER." / left chest, 90° CCW vertical / front_ink / Syne 800 tight tracking]
-  backLayout: [identical ring field / origin shifted left-center / ring_inner / same bleed], [square / displaced lower-right from origin / back_ink], [dashed trail / origin to square / back_ink / 50% opacity], [text "BEHIND ON SOMETHING." / right side 90° CCW / back_ink / Syne 300 looser]
+  frontLayout (prose, " | "-separated): "Concentric ring field — origin center-right of chest, fades off all edges, ring_inner ink, outer rings near-invisible fade not cut | Crosshair — through ring origin, 1pt, ring_outer, faint | Square object — dead center at ring origin, front_ink, outline only | Text AHEAD ON PAPER. — left chest, 90° CCW vertical, front_ink, Syne 800 tight tracking"
+  backLayout (prose): "Identical ring field — origin shifted left-center, ring_inner, same bleed | Square — displaced lower-right from origin between ring 3 and 4, back_ink | Dashed trail — ring origin to square, back_ink, 50% opacity | Text BEHIND ON SOMETHING. — right side, 90° CCW, back_ink, Syne 300 looser"
 
 DESIGN-STAGE SPECIFICATION (THE 6 MACHINE-READABLE FIELDS)
 In addition to the 10 prose sections above, populate these 6 machine-readable fields. These are what BOILER actually consumes to construct the gpt-image-1 prompt — the prose sections are for human review on the FURNACE tab, the spec fields are what the design engine sees.

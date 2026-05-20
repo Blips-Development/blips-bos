@@ -149,7 +149,8 @@ async function main() {
     }
     const gs = obj.garmentStructure as string | null;
     const ds = obj.dominantSystem as string | null;
-    const fl = obj.frontLayout as unknown[] | null;
+    const fl = (obj.frontLayout as string | null) ?? "";
+    const flSegs = fl.split("|").map((s) => s.trim()).filter(Boolean);
     structures.push(gs ?? "null");
     dominantSystems.push(ds ?? "null");
 
@@ -159,12 +160,12 @@ async function main() {
     }
     rec(`${sig.code} dominantSystem populated`, !!ds, ds ?? "MISSING");
     rec(
-      `${sig.code} frontLayout multi-element (2+)`,
-      Array.isArray(fl) && fl.length >= 2,
-      Array.isArray(fl) ? `${fl.length} elements` : "MISSING",
+      `${sig.code} frontLayout multi-element (3+ segments)`,
+      flSegs.length >= 3,
+      `${flSegs.length} elements`,
     );
     // anti-literal: no face/person/hand in any layout element text
-    const layoutText = JSON.stringify([obj.frontLayout, obj.backLayout]).toLowerCase();
+    const layoutText = `${obj.frontLayout ?? ""} ${obj.backLayout ?? ""}`.toLowerCase();
     const literal = /\b(face|person|people|human|hand|body|portrait)\b/.test(layoutText);
     rec(`${sig.code} anti-literal (no figures in layout)`, !literal, literal ? "LITERAL LEAK" : "clean");
   }

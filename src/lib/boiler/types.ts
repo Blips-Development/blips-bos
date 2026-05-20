@@ -133,21 +133,11 @@ export interface FurnaceBriefForBoiler {
   /** (narrative only) the one element that changes front→back. */
   narrativeVariable?: string | null;
 
-  /** Element-by-element FRONT wiring diagram — the validated quality driver. */
-  frontLayout?: Array<{
-    element: string;
-    position: string;
-    inkRole: string;
-    treatment: string;
-  }> | null;
+  /** Element-by-element FRONT wiring diagram as prose (" | "-separated). The validated quality driver. */
+  frontLayout?: string | null;
 
-  /** Element-by-element BACK wiring diagram (narrative / colorway_pair). */
-  backLayout?: Array<{
-    element: string;
-    position: string;
-    inkRole: string;
-    treatment: string;
-  }> | null;
+  /** Element-by-element BACK wiring diagram as prose (narrative / colorway_pair). */
+  backLayout?: string | null;
 }
 
 /**
