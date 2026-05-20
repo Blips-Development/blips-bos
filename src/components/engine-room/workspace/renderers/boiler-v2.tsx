@@ -158,7 +158,10 @@ export function BoilerV2(props: BoilerV2RendererProps) {
         signalId={activeManifestation.id}
         pendingGeneration={pendingGeneration}
       />
-      <div className="grid h-[820px] grid-cols-[1fr_320px] gap-0 overflow-hidden rounded-md border border-rule-2 bg-ink-warm">
+      {/* Height fits the viewport (minus the workspace chrome) so the canvas
+          + the full side panel are visible without page-scroll cutoff; caps at
+          820px on tall screens. The side panel scrolls internally. */}
+      <div className="grid h-[min(820px,calc(100dvh-184px))] grid-cols-[1fr_320px] gap-0 overflow-hidden rounded-md border border-rule-2 bg-ink-warm">
         {/* CENTER + RIGHT only — LEFT is the workspace's existing OrcPanel,
             wired in by the workspace shell at a higher level. */}
         <BoilerV2Canvas state={boilerV2State} />
@@ -488,7 +491,10 @@ function FlatArtView({
   const backUnavailable = face === "back" && !version.backArtworkUrl;
 
   return (
-    <div className="relative w-full max-w-[540px]" style={{ aspectRatio: "1 / 1.18" }}>
+    <div
+      className="relative max-h-full w-full max-w-[540px]"
+      style={{ aspectRatio: "1 / 1.18" }}
+    >
       <Image
         src={src}
         alt={`BOILER design version ${version.id} · ${face} face`}
