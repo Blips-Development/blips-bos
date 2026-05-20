@@ -947,6 +947,15 @@ export const designVersions = pgTable(
     widthPx: integer("width_px"),
     heightPx: integer("height_px"),
 
+    // PR-C (May 20, 2026) — front/back narrative pairs. One design_versions
+    // row = one version = a front + (optional) back face. flatArtworkUrl is
+    // the FRONT; the back face lives here. Populated only when the FURNACE
+    // brief's garmentStructure is front_back_narrative / colorway_pair.
+    // Nullable → existing rows + non-narrative designs are front-only.
+    backArtworkUrl: text("back_artwork_url"),
+    backCloudinaryPublicId: text("back_cloudinary_public_id"),
+    backPromptUsed: text("back_prompt_used"),
+
     paletteRoles: jsonb("palette_roles").notNull().default(sql`'{}'::jsonb`),
     compositionMeta: jsonb("composition_meta").notNull().default(sql`'{}'::jsonb`),
 

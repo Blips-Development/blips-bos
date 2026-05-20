@@ -416,6 +416,61 @@ function buildGarmentSystemFrontPrompt(input: GenerateDesignInput): string {
 }
 
 /**
+ * PR-C (May 20, 2026) — does this brief call for a generated BACK face?
+ * True for front_back_narrative / colorway_pair with a backLayout present.
+ * The back is generated via /edits FROM the front image so the shared
+ * visual system stays consistent and only the narrative variable changes
+ * (the PAPER-RCK "same ring field, square displaced" move).
+ */
+export function needsBackFace(furnaceBrief: GenerateDesignInput["furnaceBrief"]): boolean {
+  const s = furnaceBrief.garmentStructure;
+  return (
+    (s === "front_back_narrative" || s === "colorway_pair") &&
+    typeof furnaceBrief.backLayout === "string" &&
+    furnaceBrief.backLayout.trim().length > 0
+  );
+}
+
+/**
+ * PR-C — the BACK-face prompt. Used with /v1/images/edits, passing the FRONT
+ * image as the reference so the back keeps the front's exact system + palette,
+ * changing ONLY the narrative variable. Mirrors how PAPER-RCK's back is the
+ * same ring field with the square displaced + a ghost trail.
+ */
+export function buildGarmentSystemBackPrompt(input: GenerateDesignInput): string {
+  const { context, furnaceBrief } = input;
+  const blSegments = (furnaceBrief.backLayout ?? "")
+    .split("|")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  const backPhrase = furnaceBrief.exactText?.back?.trim() || "";
+  const layoutLines = blSegments.map((seg, i) => `${i + 1}. ${seg}`);
+
+  return [
+    `Render the BACK face of a two-beat BLIPS garment design, using the reference image (the FRONT face) as the base.`,
+    ``,
+    `=== ABSOLUTE CONSTRAINTS ===`,
+    `- KEEP the EXACT same visual system, palette, line-weight, and composition language as the reference front image. This is the second beat of ONE design, not a new design.`,
+    `- Apply ONLY this narrative change (the front's story, one beat later): ${furnaceBrief.narrativeVariable ?? "(shift the focal element per the back layout below)"}`,
+    `- ABSTRACT geometric only. NO human figures, faces, people, literal objects. FLAT, no 3D shading, no photographic gradients.`,
+    backPhrase
+      ? `- TEXT: render ONLY this exact phrase as integrated typography woven into the composition: "${backPhrase}". NO other words.`
+      : `- TEXT: no text on the back face.`,
+    `=== END CONSTRAINTS ===`,
+    ``,
+    `## DOMINANT VISUAL SYSTEM (unchanged from front): ${furnaceBrief.dominantSystem ?? "(as front)"}`,
+    `## MANIFESTATION: ${context.shortcode} · ${context.manifestationDecade} · ${context.season}`,
+    ``,
+    `## BACK LAYOUT — render these elements exactly (same system as front, variable applied)`,
+    ...(layoutLines.length > 0
+      ? layoutLines
+      : [`(apply the narrative variable to the front composition)`]),
+    ``,
+    `OUTPUT: transparent background, no garment silhouette, no mockup. The back face of the pair${backPhrase ? `, the only text being "${backPhrase}"` : ", with no text"}.`,
+  ].join("\n");
+}
+
+/**
  * Public entry — picks the right prompt builder based on input shape.
  *
  * Fresh generate with garment-system fields (PR-A): the validated assembler.

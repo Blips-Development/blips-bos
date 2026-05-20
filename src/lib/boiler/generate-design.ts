@@ -16,6 +16,8 @@
 
 import {
   buildBoilerPrompt,
+  buildGarmentSystemBackPrompt,
+  needsBackFace,
   validatePaletteRoles,
 } from "./build-prompt";
 import { generateImageViaResponses } from "./openai-image-client";
@@ -122,6 +124,45 @@ export async function generateDesign(
     overwrite: false, // each version is its own asset
   });
 
+  // ─── PR-C: BACK face (front_back_narrative / colorway_pair) ──────
+  // Generate the second beat via /edits FROM the front image so the shared
+  // system + palette stay consistent and only the narrative variable changes.
+  // Only on fresh generations (refine/branch already chain from a parent).
+  let backArtworkUrl: string | null = null;
+  let backCloudinaryPublicId: string | null = null;
+  let backPromptUsed: string | null = null;
+  if (
+    !input.parent &&
+    !input.refinementInstruction &&
+    needsBackFace(input.furnaceBrief)
+  ) {
+    try {
+      backPromptUsed = buildGarmentSystemBackPrompt(input);
+      const backResult = await generateImageViaResponses({
+        prompt: backPromptUsed,
+        tier: input.tier,
+        previousImageBase64: imageResult.imageBase64, // the front is the base
+        width: DESIGN_DIMENSIONS.width,
+        height: DESIGN_DIMENSIONS.height,
+      });
+      const backUpload = await uploadBase64Image(backResult.imageBase64, {
+        folder,
+        publicIdHint: `${publicIdHint}-back`,
+        overwrite: false,
+      });
+      backArtworkUrl = backUpload.optimizedUrl;
+      backCloudinaryPublicId = backUpload.publicId;
+    } catch (e: unknown) {
+      // Fail-soft: a missing back face shouldn't sink the whole design.
+      // The front is real + persisted; the renderer falls back to front.
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn(
+        `[generate-design] back-face generation failed (fail-soft): ${msg}. Front persists; back unset.`,
+      );
+      backPromptUsed = null;
+    }
+  }
+
   // ─── Verify output (vision-LLM-as-judge) ─────────────────────────
   // Gemini 2.5 Flash inspects the generated image against the brief.
   // Fail-soft on the verifier itself — if Gemini errors or times out,
@@ -155,6 +196,9 @@ export async function generateDesign(
     gptImage2ResponseId: imageResult.responseId,
     flatArtworkUrl: uploadResult.optimizedUrl,
     cloudinaryPublicId: uploadResult.publicId,
+    backArtworkUrl,
+    backCloudinaryPublicId,
+    backPromptUsed,
     widthPx: imageResult.widthPx,
     heightPx: imageResult.heightPx,
     costUsd: imageResult.costUsd,

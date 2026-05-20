@@ -478,23 +478,28 @@ function FlatArtView({
     );
   }
 
-  // The Images API produces ONE image per call — front-only currently. Phase
-  // 11D.4 follow-up: separate generate-back tool produces a sibling version
-  // with face=back. For now: show the same artwork for both face toggles
-  // and surface a small "back face pending" note on back.
+  // PR-C: front_back_narrative / colorway_pair designs generate a SEPARATE back
+  // artwork (via /edits from the front, so the system + palette stay locked and
+  // only the narrative variable changes). When the back tab is selected and a
+  // back artwork exists, show it; otherwise fall back to the front with a note
+  // (front-led-solid-back / type-only designs intentionally have no back image).
+  const showingBack = face === "back" && Boolean(version.backArtworkUrl);
+  const src = showingBack ? version.backArtworkUrl! : version.flatArtworkUrl;
+  const backUnavailable = face === "back" && !version.backArtworkUrl;
+
   return (
     <div className="relative w-full max-w-[540px]" style={{ aspectRatio: "1 / 1.18" }}>
       <Image
-        src={version.flatArtworkUrl}
+        src={src}
         alt={`BOILER design version ${version.id} · ${face} face`}
         fill
         sizes="540px"
         className="object-contain"
         unoptimized // Cloudinary already serves optimized; skip Next's image pipeline
       />
-      {face === "back" && (
+      {backUnavailable && (
         <div className="absolute bottom-2 right-2 rounded-sm bg-black/70 px-2 py-1 font-mono text-[9px] tracking-[0.14em] text-t4 uppercase">
-          Back face pending — coming via separate generation
+          Front-led design — no separate back face
         </div>
       )}
     </div>
@@ -511,10 +516,13 @@ function MockupView({ version }: { version: BoilerV2VersionRow | null }) {
   }
   // Phase 11D.5c swaps this for a real Dynamic Mockups composite. For now:
   // SVG-illustrated tee with the design composited via CSS overlay.
+  // PR-C: the back mockup composites the separate back artwork when present
+  // (narrative pairs); front-led designs reuse the front on both faces.
+  const backDesignUrl = version.backArtworkUrl ?? version.flatArtworkUrl;
   return (
     <div className="grid w-full max-w-[1080px] grid-cols-2 items-center gap-7">
       <SvgTeeMockup designUrl={version.flatArtworkUrl} face="front" />
-      <SvgTeeMockup designUrl={version.flatArtworkUrl} face="back" />
+      <SvgTeeMockup designUrl={backDesignUrl} face="back" />
     </div>
   );
 }

@@ -203,10 +203,14 @@ export interface GenerateDesignOutput {
   promptUsed: string;
   /** Synthetic response id (Images API has no native chain id). Kept for log continuity. */
   gptImage2ResponseId: string;
-  /** Cloudinary URL of the uploaded transparent-PNG flat artwork. */
+  /** Cloudinary URL of the uploaded transparent-PNG flat artwork (FRONT face). */
   flatArtworkUrl: string;
   /** Cloudinary public id for future delete/transform. */
   cloudinaryPublicId: string;
+  /** PR-C: BACK-face artwork (narrative pairs only). Null for front-only designs. */
+  backArtworkUrl?: string | null;
+  backCloudinaryPublicId?: string | null;
+  backPromptUsed?: string | null;
   /** Image dimensions as returned by the Images API. */
   widthPx: number;
   heightPx: number;
