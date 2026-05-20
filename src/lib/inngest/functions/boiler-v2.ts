@@ -380,6 +380,21 @@ export const boilerV2Generate = inngest.createFunction(
         printSeparationStrategy: (brief.printSeparationStrategy as any) ?? null,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         fullGarmentTreatment: (brief.fullGarmentTreatment as any) ?? null,
+        // Garment-design system (PR-A fields). Read defensively — old briefs
+        // won't have them, in which case BOILER uses the prose/#67 path.
+        garmentStructure: (brief.garmentStructure as
+          | "front_back_narrative"
+          | "front_led_solid_back"
+          | "colorway_pair"
+          | "type_only"
+          | null) ?? null,
+        dominantSystem: (brief.dominantSystem as string | null) ?? null,
+        systemRationale: (brief.systemRationale as string | null) ?? null,
+        narrativeVariable: (brief.narrativeVariable as string | null) ?? null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        frontLayout: (brief.frontLayout as any) ?? null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        backLayout: (brief.backLayout as any) ?? null,
       },
       paletteRoles: context.paletteRoles,
       compositionMeta: context.compositionMeta,

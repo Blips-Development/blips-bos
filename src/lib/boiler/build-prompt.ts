@@ -344,11 +344,83 @@ function formatCompositionMeta(meta: CompositionMeta): string {
 }
 
 /**
+ * PR-B (May 20, 2026) — the validated garment-system assembler.
+ *
+ * When FURNACE (PR-A) supplies the garment-design-system fields (frontLayout +
+ * dominantSystem + garmentStructure), BOILER assembles the FRONT-face prompt in
+ * the format proven in the autonomous-loop research (research/garment-system/)
+ * that produced the founder-approved output: a hard anti-literal + flat + two-ink
+ * preamble, then the element-by-element wiring diagram, the color palette, and
+ * the single exact front phrase as INTEGRATED typography (not a caption).
+ *
+ * This is a mechanical wrap — all design intelligence lives in FURNACE's brief.
+ * Deterministic given the inputs (easy to audit, persisted as prompt_used).
+ */
+function buildGarmentSystemFrontPrompt(input: GenerateDesignInput): string {
+  const { context, furnaceBrief } = input;
+  const fl = furnaceBrief.frontLayout ?? [];
+  const palette = furnaceBrief.colorPalette ?? [];
+  const frontPhrase = furnaceBrief.exactText?.front?.trim() || context.framingHook;
+
+  const paletteLines =
+    palette.length > 0
+      ? palette.map((c) => `- ${c.role}: ${c.name} ${c.hex}`)
+      : [
+          `- garment_base: ${input.paletteRoles.garment_base}`,
+          `- primary_ink: ${input.paletteRoles.front_ink}`,
+          `- accent_ink: ${input.paletteRoles.ring_inner}`,
+        ];
+
+  const layoutLines = fl.map(
+    (e, i) =>
+      `${i + 1}. ${e.element} — position: ${e.position} — ink: ${e.inkRole} — ${e.treatment}`,
+  );
+
+  return [
+    `Flat artwork for a premium philosophical-apparel t-shirt, transparent background, ready for screen print. FRONT face.`,
+    ``,
+    `=== ABSOLUTE CONSTRAINTS ===`,
+    `- ABSTRACT CONCEPTUAL DESIGN, NOT illustration. NO human figures, faces, people, bodies, hands. NO literal depiction of the concept's subject. ONLY abstract geometric vocabulary: lines, bars, arrows, points, ticks, arcs, rings, grids, geometric primitives.`,
+    `- FLAT screen-print aesthetic. NO 3D shading, NO perspective, NO photographic gradients (a single tonal fade is OK). Clean hard-edged lines. Two-ink discipline.`,
+    `- TEXT: render ONLY this exact phrase as integrated typography woven INTO the composition (a structural element, NOT a caption parked in empty space): "${frontPhrase}". Render NO other words, labels, wordmarks, or captions.`,
+    `=== END CONSTRAINTS ===`,
+    ``,
+    `## MANIFESTATION`,
+    `Shortcode: ${context.shortcode} · Decade: ${context.manifestationDecade} · Season: ${context.season}`,
+    `Framing hook: ${context.framingHook}`,
+    ``,
+    `## DOMINANT VISUAL SYSTEM: ${furnaceBrief.dominantSystem ?? "(unspecified)"}`,
+    ...(furnaceBrief.systemRationale ? [furnaceBrief.systemRationale] : []),
+    ...(furnaceBrief.garmentStructure
+      ? [`Garment structure: ${furnaceBrief.garmentStructure}`]
+      : []),
+    ``,
+    `## COLOR PALETTE (use ONLY these hex codes in their stated roles — no substitutions, no extra colors)`,
+    ...paletteLines,
+    ``,
+    `## FRONT LAYOUT — render these elements exactly, at these positions (the wiring diagram)`,
+    ...(layoutLines.length > 0
+      ? layoutLines
+      : [`(no layout supplied — compose a multi-element abstract design in the ${furnaceBrief.dominantSystem ?? "chosen"} system)`]),
+    ``,
+    `## REQUIREMENTS`,
+    `- Multi-element composition with conceptual logic — NOT a single icon, NOT minimal, NOT a caption under a graphic.`,
+    `- The work and the thinking is visible — someone looking at this should feel it was composed, not generated.`,
+    `- Premium, restrained, editorial. Asymmetric where the layout calls for it.`,
+    ``,
+    `OUTPUT: transparent background, no garment silhouette, no mockup. A single resolved premium flat artwork, the only text being "${frontPhrase}" rendered legibly and integrated into the composition.`,
+  ]
+    .filter((l) => l !== undefined)
+    .join("\n");
+}
+
+/**
  * Public entry — picks the right prompt builder based on input shape.
  *
- * Fresh generate (no parent): full FURNACE brief + locked palette + composition + knowledge
- * Refinement (parent + instruction): terse adjustment + invariants
- * Branch (parent, no instruction): "parallel exploration" + invariants
+ * Fresh generate with garment-system fields (PR-A): the validated assembler.
+ * Fresh generate (legacy brief, no frontLayout): full FURNACE brief + spec + knowledge.
+ * Refinement (parent + instruction): terse adjustment + invariants.
+ * Branch (parent, no instruction): "parallel exploration" + invariants.
  */
 export function buildBoilerPrompt(input: GenerateDesignInput): string {
   if (input.parent && input.refinementInstruction) {
@@ -356,6 +428,10 @@ export function buildBoilerPrompt(input: GenerateDesignInput): string {
   }
   if (input.parent && !input.refinementInstruction) {
     return buildBranchPrompt(input);
+  }
+  // PR-B: garment-system path when FURNACE supplied the wiring-diagram layout.
+  if (input.furnaceBrief.frontLayout && input.furnaceBrief.frontLayout.length > 0) {
+    return buildGarmentSystemFrontPrompt(input);
   }
   return buildFreshPrompt(input);
 }

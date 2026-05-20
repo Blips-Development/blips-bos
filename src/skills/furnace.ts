@@ -260,6 +260,122 @@ const briefSectionsSchema = z
         "Extensible addenda — sections that aren't in the core 11 but ORC or founder wants on this specific brief (hangtag content, special instructions, etc.). Empty on initial FURNACE generation; populated later via ORC tools.",
       ),
 
+    // ─── GARMENT-DESIGN SYSTEM (May 20, 2026 — validated recipe) ─────
+    //
+    // These fields carry the high-level design DECISIONS that the validated
+    // autonomous-loop research proved are the difference between BLIPS-grade
+    // output and generic output. They sit ABOVE the design-stage spec fields
+    // below (which carry the detail). See research/garment-system/.
+    //
+    // All nullable → null when refused=true (mirrors the prose sections).
+
+    garmentStructure: z
+      .enum([
+        "front_back_narrative",
+        "front_led_solid_back",
+        "colorway_pair",
+        "type_only",
+      ])
+      .nullable()
+      .describe(
+        "THE most fundamental decision — the front/back relationship, read from the signal's SHAPE. " +
+          "'front_back_narrative' = two linked beats; a single visual system shared across both faces with ONE variable changing front→back (PAPER-RCK: rings constant, square position is the variable; front=in control, back=drifted). Choose for signals with an inherent two-beat tension (claim+undercut, public+private, before+after). The BLIPS signature — prefer when the signal supports it. " +
+          "'front_led_solid_back' = full design on front, back blank or a single quiet mark. Choose for single complete statements with no second beat. " +
+          "'colorway_pair' = same design both faces, different palette per face (rare; only for explicit duality). " +
+          "'type_only' = typography alone (very rare; premium brand minimizes pure type). Null when refused=true.",
+      ),
+    structureRationale: z
+      .string()
+      .min(40)
+      .max(300)
+      .nullable()
+      .describe(
+        "One-to-two sentences: why the signal's shape calls for the chosen garmentStructure. Null when refused=true.",
+      ),
+    dominantSystem: z
+      .enum([
+        "radial",
+        "linear",
+        "compression",
+        "scatter",
+        "orbit",
+        "strata",
+        "contour",
+        "threshold",
+        "fracture",
+        "erosion",
+        "tally",
+        "measure",
+        "overwrite",
+        "grid",
+      ])
+      .nullable()
+      .describe(
+        "The dominant VISUAL SYSTEM, chosen by mapping the signal's tension-STRUCTURE to a matching geometric system. Do NOT default to 'grid' — grids are overused and only correct for genuine system/repetition/filled-structure signals. " +
+          "radial=fields you are inside/expansion; linear=journeys/ascent/decline over a path; compression=being squeezed by forces; scatter=fragments/dispersal/distance; orbit=things revolving around you; strata=accumulation/what's buried; contour=depth/terrain; threshold=a turning point/horizon crossed; fracture=a break/divergence; erosion=loss/fading; tally=counting/repetition/one exception; measure=judgment/calibration; overwrite=assimilation/a self under a new one. " +
+          "Null when refused=true.",
+      ),
+    systemRationale: z
+      .string()
+      .min(40)
+      .max(300)
+      .nullable()
+      .describe(
+        "One sentence: why this dominant system's STRUCTURE mirrors this signal's tension. Null when refused=true.",
+      ),
+    narrativeVariable: z
+      .string()
+      .min(20)
+      .max(200)
+      .nullable()
+      .describe(
+        "ONLY when garmentStructure='front_back_narrative': the single element that CHANGES from front to back to tell the two-beat story (PAPER-RCK: 'the square's position — at the ring origin on front, displaced lower-right on back'). The shared system stays constant; this is the one variable. Null otherwise and when refused=true.",
+      ),
+    frontLayout: z
+      .array(
+        z.object({
+          element: z
+            .string()
+            .min(3)
+            .max(120)
+            .describe("What the element IS (e.g. 'concentric ring field', 'small square object outline', 'vertical text column')."),
+          position: z
+            .string()
+            .min(3)
+            .max(120)
+            .describe("EXACT position, anchored to a garment landmark, NOT vague (e.g. 'origin point center-right of chest', '3 inches below front collar', 'left chest edge'). Never 'somewhere in the middle'."),
+          inkRole: z
+            .string()
+            .min(2)
+            .max(40)
+            .describe("Which colorPalette role this element uses (e.g. 'front_ink', 'ring_inner')."),
+          treatment: z
+            .string()
+            .max(160)
+            .describe("How it's rendered (e.g. '1pt outline, fades not cut', 'Syne 800 tight tracking 90° CCW', 'solid fill')."),
+        }),
+      )
+      .min(2)
+      .max(8)
+      .nullable()
+      .describe(
+        "Element-by-element FRONT-face layout — the wiring diagram. Each element with exact landmark-anchored position + ink role + treatment. This is what was missing from prose-only briefs. 2-8 elements (multi-element is required; minimal = weak). Null when refused=true.",
+      ),
+    backLayout: z
+      .array(
+        z.object({
+          element: z.string().min(3).max(120),
+          position: z.string().min(3).max(120),
+          inkRole: z.string().min(2).max(40),
+          treatment: z.string().max(160),
+        }),
+      )
+      .max(8)
+      .nullable()
+      .describe(
+        "Element-by-element BACK-face layout. Populated when garmentStructure is 'front_back_narrative' or 'colorway_pair'. For narrative: the SAME system as frontLayout with the narrativeVariable applied. Empty array or null for 'front_led_solid_back' (a single quiet mark at most) and 'type_only'. Null when refused=true.",
+      ),
+
     // ─── DESIGN-STAGE SPECIFICATION (Phase 11D FURNACE schema upgrade)
     //
     // The 6 machine-readable fields below replace the role that prose-only
@@ -601,6 +717,34 @@ The user message includes the manifestation decade's playbook (RCK / RCL / RCD).
 PAST-BRIEF CONTEXT (Tier 3)
 The user message may include up to 3 past briefs for this decade. Read them for VISUAL CONSISTENCY without copying — BLIPS visual language emerges over time. If past briefs all use heavyweight cotton garment-dyed indigo and your brief calls for something completely different, justify the departure clearly. Patterns are signals, not rules.
 
+3. THE GARMENT-DESIGN SYSTEM (validated May 20, 2026 — the difference between BLIPS-grade and generic)
+You write INSTRUCTIONS, not vibes. A great brief reads like a wiring diagram — every element has an exact position. The reference design that defines the bar (PAPER-RCK / "AHEAD ON PAPER" / "BEHIND ON SOMETHING") was produced from exactly this kind of brief. Populate these fields:
+
+3a. garmentStructure — the front/back relationship, read from the SIGNAL'S SHAPE:
+  - front_back_narrative: two linked beats. ONE visual system shared across both faces; ONE variable changes front→back to tell the story. Front states a position; back reveals/undercuts/completes it. (PAPER-RCK: rings constant, the SQUARE'S POSITION is the variable — front at origin = in control, back displaced + dashed trail = something's off.) THE BLIPS SIGNATURE — prefer this when the signal has an inherent two-beat tension (claim+undercut, public+private, before+after, outside+inside).
+  - front_led_solid_back: full design on front, back blank or one small quiet mark. For single complete statements with no second beat. Do NOT force a fake narrative onto a single-beat signal.
+  - colorway_pair: same design both faces, palette is the only variable. Rare — explicit duality only.
+  - type_only: typography alone. Very rare — premium brand minimizes pure type.
+  Set structureRationale (why the signal's shape calls for it). When narrative, set narrativeVariable (the one thing that changes front→back).
+
+3b. dominantSystem — choose the visual system whose STRUCTURE mirrors the signal's tension. DO NOT DEFAULT TO GRID. Grids are overused; only correct for genuine system/repetition/filled-structure signals. Map the tension:
+  radial (fields you're inside) · linear (a path that climbs/falls/breaks) · compression (squeezed by forces) · scatter (fragments/distance) · orbit (things revolving around you) · strata (accumulation/buried layers) · contour (depth/terrain) · threshold (a turning point/horizon crossed) · fracture (a break/divergence) · erosion (loss/fading) · tally (counting/one exception) · measure (judgment/calibration) · overwrite (a self under a new one) · grid (use sparingly).
+  Example mappings: "endless climb" → linear; "compressed from both ends" → compression; "fluent in corporate over a native self" → overwrite; "the day is past noon" → threshold. Set systemRationale (one sentence on why the structure matches).
+
+3c. frontLayout / backLayout — the WIRING DIAGRAM. Each element: what it IS + EXACT position (anchored to a garment landmark like "3 inches below front collar" / "origin center-right of chest" / "left chest edge" — NEVER "somewhere in the middle") + which colorPalette inkRole + treatment (weight/tracking/line-weight/fade). frontLayout: 2-8 elements. MULTI-ELEMENT IS REQUIRED — a single mark + a caption is NOT a BLIPS design. backLayout: same system as front with the narrativeVariable applied (narrative), or empty/one-mark (solid-back).
+
+3d. ANTI-LITERAL — ABSOLUTE. This is abstract conceptual design, NOT illustration. NEVER instruct human figures, faces, people, bodies, hands. NEVER literal depiction of the concept's subject (a music signal does NOT get a literal record/note; a family signal does NOT get literal faces; a calendar signal does NOT get a literal calendar). Abstract the concept into a geometric RELATIONSHIP. Literal illustration is the #1 failure mode — it makes the design generic and cheap.
+
+3e. FLAT + RESTRAINT. Flat screen-print aesthetic: no 3D shading, no perspective, no photographic gradients (a single tonal fade is OK). Two-ink discipline (garment base + one primary ink + at most one accent). Text is 1-5 words per face (hard cap 8), all-caps, terminal period, integrated INTO the composition as a structural element (not a caption parked in white space).
+
+WORKED EXAMPLE — PAPER-RCK (this is the bar; match this specificity):
+  garmentStructure: front_back_narrative
+  narrativeVariable: the square's position — at the ring origin on front (in control), displaced lower-right between ring 3 and 4 on back with a dashed ghost-trail to the origin (something's off)
+  dominantSystem: radial
+  systemRationale: a radial field you are inside mirrors the feeling of being measured by a system you can't see the edge of
+  frontLayout: [ring field origin center-right of chest / fades off all edges / ring_inner / outer rings near-invisible fade not cut], [crosshair through origin / 1pt / ring_outer / faint], [square object outline / dead center at ring origin / front_ink / outline only], [text "AHEAD ON PAPER." / left chest, 90° CCW vertical / front_ink / Syne 800 tight tracking]
+  backLayout: [identical ring field / origin shifted left-center / ring_inner / same bleed], [square / displaced lower-right from origin / back_ink], [dashed trail / origin to square / back_ink / 50% opacity], [text "BEHIND ON SOMETHING." / right side 90° CCW / back_ink / Syne 300 looser]
+
 DESIGN-STAGE SPECIFICATION (THE 6 MACHINE-READABLE FIELDS)
 In addition to the 10 prose sections above, populate these 6 machine-readable fields. These are what BOILER actually consumes to construct the gpt-image-1 prompt — the prose sections are for human review on the FURNACE tab, the spec fields are what the design engine sees.
 
@@ -659,7 +803,7 @@ THE BLIPS DESIGN BAR — the calibration anchor
 Every brief you produce must give BOILER enough specificity to land at the BLIPS bar. The reference design (PAPER-RCK / "AHEAD ON PAPER / BEHIND ON SOMETHING") had 5 specific hex codes with roles, exact text per face, exact font weights + tracking, 2 print separations with what's on each, full-garment bleed. That's the level of specificity to aim for. A brief that says "data dashboard with notification fragments in DM Mono" gives BOILER nothing it can render cleanly. A brief that says exactText.front = "The WhatsApp group that became your second job.", typographySpec = [{surface: "front_center", content: "The WhatsApp group that became your second job.", font: "Syne", weight: 700, tracking: "tight", orientation: "horizontal", size_hint: "hero"}] gives BOILER exactly what it needs to render one clean hero design.
 
 OUTPUT FORMAT
-Valid JSON matching the schema. When refused=true, all section fields null INCLUDING the 6 spec fields. When refused=false, all 10 prose section fields populated within character bounds AND all 6 spec fields populated. Empty addenda array on initial generation.
+Valid JSON matching the schema. When refused=true, ALL fields null INCLUDING the garment-system fields (garmentStructure, structureRationale, dominantSystem, systemRationale, narrativeVariable, frontLayout, backLayout) AND the 6 spec fields. When refused=false: all 10 prose section fields within bounds + the garment-system fields (garmentStructure, dominantSystem, systemRationale, structureRationale, frontLayout; narrativeVariable + backLayout when the structure calls for them) + all 6 spec fields. Empty addenda array on initial generation.
 
 CHARACTER COUNTS — STRICTLY ENFORCED BY THE SCHEMA
 The schema rejects any section over its max character bound and the API call FAILS. Stay under each max — concision is part of the editorial discipline. Long answers indicate unfocused thinking; tighten and ship.
@@ -748,7 +892,7 @@ ${knowledgeSection("MATERIALS PLAYBOOK (Tier 2 — for tactileIntent shaping)", 
 ${pastBriefsSection}
 
 INSTRUCTIONS
-Score brand-fit 0-100. If < 50, refuse with specific rationale (refused=true, all sections AND all 6 design-stage spec fields null). If >= 50, produce all 10 visual-design prose sections + populate addenda as an empty array + populate ALL 6 design-stage spec fields (exactText, colorPalette, compositionRules, typographySpec, printSeparationStrategy, fullGarmentTreatment).
+Score brand-fit 0-100. If < 50, refuse with specific rationale (refused=true, ALL fields null). If >= 50, produce all 10 visual-design prose sections + empty addenda array + the GARMENT-DESIGN SYSTEM fields (garmentStructure + structureRationale + dominantSystem + systemRationale + frontLayout; plus narrativeVariable + backLayout when garmentStructure is front_back_narrative or colorway_pair) + ALL 6 design-stage spec fields (exactText, colorPalette, compositionRules, typographySpec, printSeparationStrategy, fullGarmentTreatment). Remember: garmentStructure is read from the SIGNAL'S SHAPE; dominantSystem is NOT a grid by default; frontLayout is a multi-element wiring diagram with landmark-anchored positions; anti-literal is absolute.
 
 CRITICAL — the spec fields are what BOILER actually renders from. The prose sections are for the founder's editorial review on the FURNACE tab. If your spec fields and prose sections say different things, BOILER will render what the SPEC FIELDS say. Do not put example/placeholder text in exactText (e.g. do not write "UNREAD: 999+" in exactText.front unless you literally want those characters on the front of the tee). Use voiceInVisual prose for direction; use exactText for the exact characters to render.
 
