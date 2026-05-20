@@ -25,7 +25,7 @@ import type { OrcToolContext } from "./types";
 export function boilerV2SetColorTool(ctx: OrcToolContext) {
   return tool({
     description:
-      "Update one palette role on the current BOILER design state. Roles: garment_base, ring_outer, ring_inner, front_ink, back_ink. Takes effect on the next generate/refine call — does NOT trigger regeneration on its own. Call this when the founder describes a color change in natural language (e.g. 'darker garment, almost burgundy' → set_color(garment_base, #4A1A1A)). Use 6-digit hex with leading #.",
+      "Set ONE palette role's hex on the current BOILER design state. garment_base = the TEE/garment colour (drives the mockup); ring_outer, ring_inner, front_ink, back_ink = ink roles. This updates the colour SPEC only — it does NOT regenerate or change the design ARTWORK on the canvas (it takes effect on the NEXT generate/refine). Do NOT use this for visual changes to the design like 'add a blue background' or 'change the composition' — those are boiler_v2_refine. Use set_color only for an explicit garment/ink colour value (e.g. 'darker garment, almost burgundy' → set_color(garment_base, #4A1A1A)). 6-digit hex with leading #.",
     inputSchema: z.object({
       role: paletteRoleNameSchema.describe(
         "Which palette role to update.",

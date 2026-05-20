@@ -1,4 +1,4 @@
-import { and, eq, ilike, sql, desc } from "drizzle-orm";
+import { and, eq, ilike, desc } from "drizzle-orm";
 import { generateImage } from "ai";
 import { inngest } from "../client";
 import {
@@ -6,6 +6,7 @@ import {
   signals as signalsTable,
   agentOutputs,
   knowledgeDocuments,
+  configEngineRoom,
 } from "@/db";
 import { runSkill } from "@/lib/orc/orchestrator";
 import { getMemoryBackend } from "@/lib/orc/memory";
@@ -74,6 +75,27 @@ type DecadeKey = "RCK" | "RCL" | "RCD";
  *     flips to BOILER_REFUSED (founder reviews + force-advances or
  *     dismisses).
  */
+
+/**
+ * Org-scoped check of the boiler_v2_renderer flag. The session-based
+ * isBoilerV2RendererEnabled() can't run here (Inngest has no request session),
+ * so this reads config_engine_room directly by orgId. When true, the LEGACY
+ * BOILER skill self-skips — v2 owns generation (writes design_versions, the
+ * only table the v2 renderer reads).
+ */
+async function isBoilerV2EnabledForOrg(orgId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ value: configEngineRoom.value })
+    .from(configEngineRoom)
+    .where(
+      and(
+        eq(configEngineRoom.orgId, orgId),
+        eq(configEngineRoom.key, "boiler_v2_renderer"),
+      ),
+    )
+    .limit(1);
+  return row?.value === true;
+}
 
 export const boilerProcess = inngest.createFunction(
   {
@@ -196,6 +218,22 @@ export const boilerProcess = inngest.createFunction(
         manifestationSignalId: string;
         briefId: string;
       };
+
+    // ─── 0. v2 gate — the legacy 4-variant skill must NOT run when the org
+    // is on BOILER v2. v2 owns generation (boiler.v2.generate → design_versions,
+    // the only table the v2 renderer reads). Letting this legacy skill fire on
+    // furnace.brief.approved produced INVISIBLE agent_outputs (gemini-image /
+    // imagen), burned compute, and threw "response did not match schema" noise
+    // — and was the real cause of "ORC says it generated but nothing appears".
+    const v2Enabled = await step.run("check-v2-flag", async () =>
+      isBoilerV2EnabledForOrg(orgId),
+    );
+    if (v2Enabled) {
+      console.log(
+        `[BOILER legacy] org ${orgId} is on BOILER v2 — skipping legacy 4-variant generation for ${manifestationSignalId}. v2 owns this signal.`,
+      );
+      return { skipped: true, reason: "boiler_v2_enabled" };
+    }
 
     // ─── 1. Load manifestation + brief context ──────────────────
     const context = await step.run("load-boiler-context", async () => {
