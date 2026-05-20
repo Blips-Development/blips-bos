@@ -42,7 +42,8 @@ import {
   signals,
   knowledgeDocuments,
 } from "@/db/schema";
-import { generateDesign } from "@/lib/boiler/generate-design";
+import { generateDesign, generateBackFace } from "@/lib/boiler/generate-design";
+import { needsBackFace } from "@/lib/boiler/build-prompt";
 import type {
   GenerateDesignInput,
   PaletteRoles,
@@ -411,10 +412,44 @@ export const boilerV2Generate = inngest.createFunction(
       knowledgeContext,
     };
 
-    // ─── 4. Call the service (image-gen + Cloudinary + verifier) ─────
+    // ─── 4. Call the service (FRONT image-gen + Cloudinary + verifier) ─
+    // skipBackFace: the back face runs in its OWN step below. Front gen +
+    // back gen in ONE step exceeds Vercel's 60s function limit → 504 timeout
+    // → Inngest retries → no row ever lands (the regression PR-C introduced).
     const result = await step.run("generate-design", async () => {
-      return await generateDesign(generateInput);
+      return await generateDesign(generateInput, { skipBackFace: true });
     });
+
+    // ─── 4b. BACK face in a SEPARATE step (its own 60s budget) ───────
+    // front_back_narrative / colorway_pair only. Re-fetch the just-uploaded
+    // front from Cloudinary → base64 → /edits base, so the heavy base64 never
+    // crosses the step-result boundary. Fail-soft inside generateBackFace.
+    let backFields = {
+      backArtworkUrl: result.backArtworkUrl ?? null,
+      backCloudinaryPublicId: result.backCloudinaryPublicId ?? null,
+      backPromptUsed: result.backPromptUsed ?? null,
+    };
+    if (
+      mode === "fresh" &&
+      !refinementInstruction &&
+      needsBackFace(generateInput.furnaceBrief)
+    ) {
+      backFields = await step.run("generate-back-face", async () => {
+        const res = await fetch(result.flatArtworkUrl);
+        if (!res.ok) {
+          console.warn(
+            `[BOILER v2] back-face: front fetch failed HTTP ${res.status}; skipping back`,
+          );
+          return {
+            backArtworkUrl: null,
+            backCloudinaryPublicId: null,
+            backPromptUsed: null,
+          };
+        }
+        const buf = Buffer.from(await res.arrayBuffer());
+        return await generateBackFace(generateInput, buf.toString("base64"));
+      });
+    }
 
     // ─── 5. Persist design_versions + update boiler_state ────────────
     const versionId = await step.run("persist-version", async () => {
@@ -433,9 +468,9 @@ export const boilerV2Generate = inngest.createFunction(
           gptImage2ResponseId: result.gptImage2ResponseId,
           flatArtworkUrl: result.flatArtworkUrl,
           cloudinaryPublicId: result.cloudinaryPublicId,
-          backArtworkUrl: result.backArtworkUrl ?? null,
-          backCloudinaryPublicId: result.backCloudinaryPublicId ?? null,
-          backPromptUsed: result.backPromptUsed ?? null,
+          backArtworkUrl: backFields.backArtworkUrl,
+          backCloudinaryPublicId: backFields.backCloudinaryPublicId,
+          backPromptUsed: backFields.backPromptUsed,
           widthPx: result.widthPx,
           heightPx: result.heightPx,
           paletteRoles: context.paletteRoles,
