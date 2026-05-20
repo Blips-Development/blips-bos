@@ -433,15 +433,18 @@ export const boilerV2Generate = inngest.createFunction(
           gptImage2ResponseId: result.gptImage2ResponseId,
           flatArtworkUrl: result.flatArtworkUrl,
           cloudinaryPublicId: result.cloudinaryPublicId,
+          backArtworkUrl: result.backArtworkUrl ?? null,
+          backCloudinaryPublicId: result.backCloudinaryPublicId ?? null,
+          backPromptUsed: result.backPromptUsed ?? null,
           widthPx: result.widthPx,
           heightPx: result.heightPx,
           paletteRoles: context.paletteRoles,
           // Embed verification result into composition_meta — survives the
           // jsonb column without a new column add. Renderer reads it.
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           compositionMeta: {
             ...context.compositionMeta,
             verification: result.verification ?? null,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } as any,
           costUsd: result.costUsd.toString(),
           createdBy: triggeredBy ?? null,

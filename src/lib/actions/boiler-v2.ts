@@ -81,6 +81,10 @@ export interface BoilerV2VersionRow {
   refinementInstruction: string | null;
   flatArtworkUrl: string | null;
   cloudinaryPublicId: string | null;
+  /** PR-C: BACK-face artwork (narrative pairs only). Null for front-only designs. */
+  backArtworkUrl: string | null;
+  backCloudinaryPublicId: string | null;
+  backPromptUsed: string | null;
   widthPx: number | null;
   heightPx: number | null;
   paletteRoles: PaletteRoles;
@@ -222,6 +226,9 @@ export async function loadBoilerV2State(opts: {
     refinementInstruction: v.refinementInstruction,
     flatArtworkUrl: v.flatArtworkUrl,
     cloudinaryPublicId: v.cloudinaryPublicId,
+    backArtworkUrl: v.backArtworkUrl,
+    backCloudinaryPublicId: v.backCloudinaryPublicId,
+    backPromptUsed: v.backPromptUsed,
     widthPx: v.widthPx,
     heightPx: v.heightPx,
     paletteRoles: v.paletteRoles as PaletteRoles,
