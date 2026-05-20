@@ -121,6 +121,23 @@ export type BlipsEvents = {
       triggeredBy?: string;
     };
   };
+  /**
+   * Composite a design version's flat artwork onto the configured garment
+   * mockup template (Dynamic Mockups), recolored to colorwayHex, and persist
+   * mockup_renders rows. Fired as a side-effect after a design lands AND when
+   * the founder changes the garment colour (so the mockup re-renders per
+   * colour). Decoupled from generation so a slow/failed DM render never sinks
+   * the design + each render gets its own Vercel function-timeout budget.
+   */
+  "boiler.v2.render-mockup": {
+    data: {
+      orgId: string;
+      /** The design_versions row to composite onto the garment. */
+      designVersionId: string;
+      /** Garment base hex for DM recolor + the mockup_renders (version,colour,face) key. */
+      colorwayHex: string;
+    };
+  };
 
   // ─── ENGINE — tech pack (Phase 12) ───────────────────────────
   "engine.ready": {

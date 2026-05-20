@@ -12,6 +12,7 @@ import {
   boilerV2GenerateAction,
   type BoilerV2LoadedState,
   type BoilerV2VersionRow,
+  type BoilerV2MockupRow,
 } from "@/lib/actions/boiler-v2";
 import type { RendererProps } from "./registry";
 import { ColorPopover } from "./color-popover";
@@ -352,7 +353,17 @@ function BoilerV2Canvas({ state }: { state: BoilerV2LoadedState }) {
         {viewMode === "flat" ? (
           <FlatArtView version={currentVersion} face={face} />
         ) : (
-          <MockupView version={currentVersion} />
+          <MockupView
+            version={currentVersion}
+            renders={state.mockupRenders.filter(
+              (m) => m.designVersionId === currentVersion?.id,
+            )}
+            activeHex={
+              state.state?.activeGarmentHex ??
+              currentVersion?.paletteRoles?.garment_base ??
+              null
+            }
+          />
         )}
       </div>
 
@@ -506,7 +517,15 @@ function FlatArtView({
   );
 }
 
-function MockupView({ version }: { version: BoilerV2VersionRow | null }) {
+function MockupView({
+  version,
+  renders,
+  activeHex,
+}: {
+  version: BoilerV2VersionRow | null;
+  renders: BoilerV2MockupRow[];
+  activeHex: string | null;
+}) {
   if (!version?.flatArtworkUrl) {
     return (
       <div className="rounded-sm border border-dashed border-rule-2 px-6 py-8 font-mono text-[10px] tracking-[0.2em] text-t5 uppercase">
@@ -514,15 +533,68 @@ function MockupView({ version }: { version: BoilerV2VersionRow | null }) {
       </div>
     );
   }
-  // Phase 11D.5c swaps this for a real Dynamic Mockups composite. For now:
-  // SVG-illustrated tee with the design composited via CSS overlay.
-  // PR-C: the back mockup composites the separate back artwork when present
-  // (narrative pairs); front-led designs reuse the front on both faces.
+
+  // Phase 11D.5c: prefer the real Dynamic Mockups photo composite when one
+  // exists for this version+face — preferring the active colour, else any
+  // render for the version (a render from a prior colour beats the SVG stub).
+  // Falls back to the SVG-illustrated tee while the DM render is pending or
+  // when no template covers that face (back-view needs a back template).
+  const pick = (f: Face): BoilerV2MockupRow | null => {
+    const forFace = renders.filter((r) => r.face === f && r.cloudinaryUrl);
+    return (
+      forFace.find((r) => activeHex && r.colorwayHex === activeHex) ??
+      forFace[0] ??
+      null
+    );
+  };
+  const frontRender = pick("front");
+  const backRender = pick("back");
   const backDesignUrl = version.backArtworkUrl ?? version.flatArtworkUrl;
+
+  // Renders exist for this version but none yet for the active colour → a
+  // re-render is in flight after a colour change. Surface a subtle hint.
+  const pendingActiveColour =
+    !!activeHex &&
+    renders.length > 0 &&
+    !renders.some((r) => r.colorwayHex === activeHex && r.cloudinaryUrl);
+
   return (
-    <div className="grid w-full max-w-[1080px] grid-cols-2 items-center gap-7">
-      <SvgTeeMockup designUrl={version.flatArtworkUrl} face="front" />
-      <SvgTeeMockup designUrl={backDesignUrl} face="back" />
+    <div className="flex w-full flex-col items-center gap-3">
+      <div className="grid w-full max-w-[1080px] grid-cols-2 items-center gap-7">
+        {frontRender?.cloudinaryUrl ? (
+          <PhotoMockup url={frontRender.cloudinaryUrl} face="front" />
+        ) : (
+          <SvgTeeMockup designUrl={version.flatArtworkUrl} face="front" />
+        )}
+        {backRender?.cloudinaryUrl ? (
+          <PhotoMockup url={backRender.cloudinaryUrl} face="back" />
+        ) : (
+          <SvgTeeMockup designUrl={backDesignUrl} face="back" />
+        )}
+      </div>
+      {pendingActiveColour && (
+        <div className="font-mono text-[9px] tracking-[0.18em] text-t5 uppercase">
+          Rendering photo mockup for selected colour…
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PhotoMockup({ url, face }: { url: string; face: Face }) {
+  return (
+    <div className="relative" style={{ aspectRatio: "1 / 1.22" }}>
+      <Image
+        src={url}
+        alt={`Garment mockup · ${face} face`}
+        fill
+        sizes="540px"
+        className="object-contain"
+        unoptimized // Cloudinary already serves optimized
+      />
+      <div className="absolute -bottom-5 left-0 right-0 text-center font-mono text-[9.5px] tracking-[0.22em] text-t5 uppercase">
+        {face}
+      </div>
     </div>
   );
 }
