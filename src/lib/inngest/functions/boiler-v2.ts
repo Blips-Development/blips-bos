@@ -396,6 +396,11 @@ export const boilerV2Generate = inngest.createFunction(
         frontLayout: (brief.frontLayout as any) ?? null,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         backLayout: (brief.backLayout as any) ?? null,
+        // Richness treatment (May 22) — agent-selected; BOILER assembles them.
+        textureStrategy: (brief.textureStrategy as string | null) ?? null,
+        depthStrategy: (brief.depthStrategy as string | null) ?? null,
+        colorStrategy: (brief.colorStrategy as string | null) ?? null,
+        compositionStance: (brief.compositionStance as string | null) ?? null,
       },
       paletteRoles: context.paletteRoles,
       compositionMeta: context.compositionMeta,

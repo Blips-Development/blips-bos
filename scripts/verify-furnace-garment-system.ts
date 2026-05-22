@@ -91,6 +91,7 @@ async function main() {
 
   const dominantSystems: string[] = [];
   const structures: string[] = [];
+  const textureStrategies: string[] = [];
 
   for (const sig of SIGNALS) {
     console.log(`\n== ${sig.code} ==`);
@@ -168,6 +169,23 @@ async function main() {
     const layoutText = `${obj.frontLayout ?? ""} ${obj.backLayout ?? ""}`.toLowerCase();
     const literal = /\b(face|person|people|human|hand|body|portrait)\b/.test(layoutText);
     rec(`${sig.code} anti-literal (no figures in layout)`, !literal, literal ? "LITERAL LEAK" : "clean");
+
+    // Richness treatment (May 22) — the 4 treatment fields must populate with
+    // valid enum values (confirms the schema addition didn't break Gemini AND
+    // that FURNACE is actually choosing treatments).
+    const tex = obj.textureStrategy as string | null;
+    const depth = obj.depthStrategy as string | null;
+    const color = obj.colorStrategy as string | null;
+    const comp = obj.compositionStance as string | null;
+    const TEX = ["flat_clean", "halftone_gradient", "ink_grain_distress", "overprint_blend", "tonal_density"];
+    const DEPTH = ["single_plane", "layered_fg_bg", "scale_contrast_hero"];
+    const COLOR = ["monochrome", "duotone_accent", "tonal_range"];
+    const COMP = ["centered_iconic", "asymmetric_tension", "full_bleed_immersive"];
+    rec(`${sig.code} textureStrategy valid`, !!tex && TEX.includes(tex), tex ?? "MISSING");
+    rec(`${sig.code} depthStrategy valid`, !!depth && DEPTH.includes(depth), depth ?? "MISSING");
+    rec(`${sig.code} colorStrategy valid`, !!color && COLOR.includes(color), color ?? "MISSING");
+    rec(`${sig.code} compositionStance valid`, !!comp && COMP.includes(comp), comp ?? "MISSING");
+    textureStrategies.push(tex ?? "null");
   }
 
   // cross-signal variety

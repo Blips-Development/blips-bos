@@ -138,6 +138,19 @@ export interface FurnaceBriefForBoiler {
 
   /** Element-by-element BACK wiring diagram as prose (narrative / colorway_pair). */
   backLayout?: string | null;
+
+  // ─── Richness treatment (May 22, 2026 — "make it superb") ─────────
+  // Agent-selected per signal; BOILER assembles into the image prompt.
+  // All optional for backward compatibility with pre-richness briefs.
+
+  /** Print-craft texture: flat_clean / halftone_gradient / ink_grain_distress / overprint_blend / tonal_density. */
+  textureStrategy?: string | null;
+  /** Compositional depth: single_plane / layered_fg_bg / scale_contrast_hero. */
+  depthStrategy?: string | null;
+  /** Colour sophistication: monochrome / duotone_accent / tonal_range. */
+  colorStrategy?: string | null;
+  /** Composition confidence: centered_iconic / asymmetric_tension / full_bleed_immersive. */
+  compositionStance?: string | null;
 }
 
 /**

@@ -356,6 +356,54 @@ function formatCompositionMeta(meta: CompositionMeta): string {
  * This is a mechanical wrap — all design intelligence lives in FURNACE's brief.
  * Deterministic given the inputs (easy to audit, persisted as prompt_used).
  */
+/**
+ * Richness treatment (May 22, 2026) — translate FURNACE's per-signal treatment
+ * choices into concrete prompt directives. This is what lifts a clean-but-flat
+ * design to "rich". Returns [] for pre-richness briefs (backward compatible).
+ * Texture here is FLAT screen-print craft (halftone/grain/overprint), never 3D.
+ */
+function richnessDirectives(fb: GenerateDesignInput["furnaceBrief"]): string[] {
+  const lines: string[] = [];
+  const texMap: Record<string, string> = {
+    flat_clean:
+      "TEXTURE: flat solid inks, crisp hard edges, no halftone/grain — restraint is the intent.",
+    halftone_gradient:
+      "TEXTURE: halftone dot-screen gradients for tonal depth (flat screen-print halftones, NEVER photographic gradients).",
+    ink_grain_distress:
+      "TEXTURE: subtle ink grain + lightly distressed/eroded edges — the tactile hand of real screen-print. Still flat (texture, not 3D).",
+    overprint_blend:
+      "TEXTURE: where forms overlap, inks visibly MULTIPLY into a third tone (overprint), as in 2-colour screen printing.",
+    tonal_density:
+      "TEXTURE: build tonal density across the field — sparse in one region, dense in another — weight through element density, not shading.",
+  };
+  const depthMap: Record<string, string> = {
+    single_plane: "DEPTH: a single flat plane, restrained.",
+    layered_fg_bg:
+      "DEPTH: distinct planes — a background field, a midground system, a foreground focal element — layered so the eye reads depth.",
+    scale_contrast_hero:
+      "DEPTH: strong scale contrast — one dominant hero element against fine, small secondary detail.",
+  };
+  const colorMap: Record<string, string> = {
+    monochrome: "COLOUR: monochrome — one ink on the garment base.",
+    duotone_accent:
+      "COLOUR: base ink + ONE accent colour used sparingly, only where it earns emphasis.",
+    tonal_range:
+      "COLOUR: a tonal ladder of a single hue via halftone — reads rich while staying few-ink.",
+  };
+  const compMap: Record<string, string> = {
+    centered_iconic: "COMPOSITION: centered, iconic, badge-like.",
+    asymmetric_tension:
+      "COMPOSITION: asymmetric — off-axis weight, intentional negative space, dynamic tension.",
+    full_bleed_immersive:
+      "COMPOSITION: full-bleed immersive — elements run off the edges of the print area, no tidy margins.",
+  };
+  if (fb.textureStrategy && texMap[fb.textureStrategy]) lines.push(`- ${texMap[fb.textureStrategy]}`);
+  if (fb.depthStrategy && depthMap[fb.depthStrategy]) lines.push(`- ${depthMap[fb.depthStrategy]}`);
+  if (fb.colorStrategy && colorMap[fb.colorStrategy]) lines.push(`- ${colorMap[fb.colorStrategy]}`);
+  if (fb.compositionStance && compMap[fb.compositionStance]) lines.push(`- ${compMap[fb.compositionStance]}`);
+  return lines;
+}
+
 function buildGarmentSystemFrontPrompt(input: GenerateDesignInput): string {
   const { context, furnaceBrief } = input;
   // frontLayout is a prose wiring diagram, " | "-separated (one element per segment).
@@ -382,8 +430,8 @@ function buildGarmentSystemFrontPrompt(input: GenerateDesignInput): string {
     ``,
     `=== ABSOLUTE CONSTRAINTS ===`,
     `- ABSTRACT CONCEPTUAL DESIGN, NOT illustration. NO human figures, faces, people, bodies, hands. NO literal depiction of the concept's subject. ONLY abstract geometric vocabulary: lines, bars, arrows, points, ticks, arcs, rings, grids, geometric primitives.`,
-    `- FLAT screen-print aesthetic. NO 3D shading, NO perspective, NO photographic gradients (a single tonal fade is OK). Clean hard-edged lines. Two-ink discipline.`,
-    `- TEXT: render ONLY this exact phrase as integrated typography woven INTO the composition (a structural element, NOT a caption parked in empty space): "${frontPhrase}". Render NO other words, labels, wordmarks, or captions.`,
+    `- FLAT screen-print aesthetic. NO 3D shading, NO perspective, NO photographic/CGI rendering. Flat does NOT mean bare — screen-print TEXTURE (halftones, ink grain, overprint) is encouraged per the RICHNESS TREATMENT below. Respect the palette's ink count.`,
+    `- TEXT: render ONLY this exact phrase, SPELLED CHARACTER-FOR-CHARACTER, as integrated typography woven INTO the composition (a structural element, NOT a caption parked in empty space): "${frontPhrase}". Do NOT invent, drop, reorder, or alter any letters; render it large enough to be perfectly legible. Render NO other words, labels, wordmarks, or captions.`,
     `=== END CONSTRAINTS ===`,
     ``,
     `## MANIFESTATION`,
@@ -403,6 +451,13 @@ function buildGarmentSystemFrontPrompt(input: GenerateDesignInput): string {
     ...(layoutLines.length > 0
       ? layoutLines
       : [`(no layout supplied — compose a multi-element abstract design in the ${furnaceBrief.dominantSystem ?? "chosen"} system)`]),
+    ...(richnessDirectives(furnaceBrief).length > 0
+      ? [
+          ``,
+          `## RICHNESS TREATMENT — how to render (this is what lifts it from clean to premium)`,
+          ...richnessDirectives(furnaceBrief),
+        ]
+      : []),
     ``,
     `## REQUIREMENTS`,
     `- Multi-element composition with conceptual logic — NOT a single icon, NOT minimal, NOT a caption under a graphic.`,
@@ -452,9 +507,9 @@ export function buildGarmentSystemBackPrompt(input: GenerateDesignInput): string
     `=== ABSOLUTE CONSTRAINTS ===`,
     `- KEEP the EXACT same visual system, palette, line-weight, and composition language as the reference front image. This is the second beat of ONE design, not a new design.`,
     `- Apply ONLY this narrative change (the front's story, one beat later): ${furnaceBrief.narrativeVariable ?? "(shift the focal element per the back layout below)"}`,
-    `- ABSTRACT geometric only. NO human figures, faces, people, literal objects. FLAT, no 3D shading, no photographic gradients.`,
+    `- ABSTRACT geometric only. NO human figures, faces, people, literal objects. FLAT screen-print (no 3D/photographic rendering); KEEP the front's texture treatment (halftone/grain/overprint) exactly as-is.`,
     backPhrase
-      ? `- TEXT: render ONLY this exact phrase as integrated typography woven into the composition: "${backPhrase}". NO other words.`
+      ? `- TEXT: render ONLY this exact phrase, SPELLED CHARACTER-FOR-CHARACTER (do not invent, drop, or alter any letters; large enough to be perfectly legible), woven into the composition: "${backPhrase}". NO other words.`
       : `- TEXT: no text on the back face.`,
     `=== END CONSTRAINTS ===`,
     ``,
@@ -465,6 +520,9 @@ export function buildGarmentSystemBackPrompt(input: GenerateDesignInput): string
     ...(layoutLines.length > 0
       ? layoutLines
       : [`(apply the narrative variable to the front composition)`]),
+    ...(richnessDirectives(furnaceBrief).length > 0
+      ? [``, `## RICHNESS TREATMENT (same as front — keep consistent)`, ...richnessDirectives(furnaceBrief)]
+      : []),
     ``,
     `OUTPUT: transparent background, no garment silhouette, no mockup. The back face of the pair${backPhrase ? `, the only text being "${backPhrase}"` : ", with no text"}.`,
   ].join("\n");

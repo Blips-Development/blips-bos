@@ -347,6 +347,53 @@ const briefSectionsSchema = z
         "Element-by-element BACK-face layout, as prose (same ' | '-separated format as frontLayout). Populated when garmentStructure is 'front_back_narrative' or 'colorway_pair' — the SAME system as frontLayout with the narrativeVariable applied. Empty string or null for 'front_led_solid_back' (one quiet mark at most) and 'type_only'. Null when refused=true.",
       ),
 
+    // ─── RICHNESS TREATMENT (May 22, 2026 — "make it superb") ───────
+    //
+    // The treatment LEVERS that lift a clean-but-flat design to rich.
+    // Agent-selected per signal (like dominantSystem) from bounded menus;
+    // BOILER assembles them into the image prompt. Flat enums (NOT nested
+    // objects) — the hotfix #70 lesson. The ANTI-LITERAL block stays HARD
+    // regardless of treatment; texture means screen-print craft, never
+    // photographic 3D rendering.
+    textureStrategy: z
+      .enum([
+        "flat_clean",
+        "halftone_gradient",
+        "ink_grain_distress",
+        "overprint_blend",
+        "tonal_density",
+      ])
+      .nullable()
+      .describe(
+        "The print-craft TEXTURE — the biggest richness lever. flat_clean=crisp vector, no texture (use sparingly — reads 'okay', not 'superb'); halftone_gradient=dot-screen gradients for tonal depth within few inks; ink_grain_distress=grain + subtle distressed edges, the 'hand' of real screen-print; overprint_blend=where forms cross, inks multiply into a third tone; tonal_density=density build-up (sparse→dense) across the field. Pick by mood: gritty/raw→ink_grain_distress; luminous/expansive→halftone_gradient; layered/accumulated→overprint_blend or tonal_density. Texture is flat screen-print craft, NOT 3D/photographic rendering. Null when refused=true.",
+      ),
+    depthStrategy: z
+      .enum(["single_plane", "layered_fg_bg", "scale_contrast_hero"])
+      .nullable()
+      .describe(
+        "Compositional DEPTH. single_plane=one flat layer (restrained); layered_fg_bg=distinct foreground/mid/background planes reading as depth; scale_contrast_hero=one dominant hero element against fine small detail (big-vs-tiny tension). Prefer layered_fg_bg or scale_contrast_hero for richness; single_plane only when restraint is the point. Null when refused=true.",
+      ),
+    colorStrategy: z
+      .enum(["monochrome", "duotone_accent", "tonal_range"])
+      .nullable()
+      .describe(
+        "COLOUR sophistication within the print-separation budget. monochrome=one ink (most restrained); duotone_accent=base + ONE considered accent that earns its place; tonal_range=a tonal ladder of one hue via halftone (rich, still few inks). Break monochrome when the signal has a tension point worth accenting. Null when refused=true.",
+      ),
+    compositionStance: z
+      .enum(["centered_iconic", "asymmetric_tension", "full_bleed_immersive"])
+      .nullable()
+      .describe(
+        "COMPOSITION confidence. centered_iconic=symmetric/badge-like (safe, can read static); asymmetric_tension=off-axis weight + intentional negative space (more art-directed); full_bleed_immersive=elements run off the print edges, immersive field. Don't default to centered_iconic for every signal — asymmetry + bleed read more premium. Null when refused=true.",
+      ),
+    treatmentRationale: z
+      .string()
+      .min(30)
+      .max(300)
+      .nullable()
+      .describe(
+        "One-to-two sentences: why this combination of texture/depth/colour/composition fits THIS signal's mood + the chosen dominant system. Null when refused=true.",
+      ),
+
     // ─── DESIGN-STAGE SPECIFICATION (Phase 11D FURNACE schema upgrade)
     //
     // The 6 machine-readable fields below replace the role that prose-only
@@ -706,7 +753,14 @@ You write INSTRUCTIONS, not vibes. A great brief reads like a wiring diagram —
 
 3d. ANTI-LITERAL — ABSOLUTE. This is abstract conceptual design, NOT illustration. NEVER instruct human figures, faces, people, bodies, hands. NEVER literal depiction of the concept's subject (a music signal does NOT get a literal record/note; a family signal does NOT get literal faces; a calendar signal does NOT get a literal calendar). Abstract the concept into a geometric RELATIONSHIP. Literal illustration is the #1 failure mode — it makes the design generic and cheap.
 
-3e. FLAT + RESTRAINT. Flat screen-print aesthetic: no 3D shading, no perspective, no photographic gradients (a single tonal fade is OK). Two-ink discipline (garment base + one primary ink + at most one accent). Text is 1-5 words per face (hard cap 8), all-caps, terminal period, integrated INTO the composition as a structural element (not a caption parked in white space).
+3e. FLAT, NOT BARE — print-craft texture is where richness lives. Keep it FLAT screen-print: no 3D shading, no perspective, no photographic/CGI rendering. But flat ≠ featureless: real premium screen-print is RICH through CRAFT — halftone dot-screens, ink grain, subtle distressed edges, overprint where forms cross. A purely flat-vector 2-tone design reads "okay", not "superb". Choose the texture via textureStrategy (3f). Text is 1-5 words per face (hard cap 8), all-caps, terminal period, integrated INTO the composition as a structural element (not a caption parked in white space).
+
+3f. RICHNESS TREATMENT — pick a treatment per signal (like you pick the dominant system), from these bounded menus. This is the lever from "clean but flat" to "rich + superb". Set treatmentRationale (why this combination fits the signal's mood + system). The anti-literal + no-3D/no-photographic rules above STILL hold — texture here is FLAT craft, never rendering.
+  - textureStrategy: flat_clean (crisp vector — use sparingly) / halftone_gradient (dot-screen tonal depth within few inks) / ink_grain_distress (grain + distressed edges, the screen-print 'hand') / overprint_blend (inks multiply into a third tone where forms cross) / tonal_density (sparse→dense build-up across the field). Map by mood: gritty/raw→ink_grain_distress; luminous/expansive→halftone_gradient; layered/accumulated→overprint_blend or tonal_density.
+  - depthStrategy: single_plane (restrained) / layered_fg_bg (distinct fg/mid/bg planes) / scale_contrast_hero (one big hero element against fine small detail). Prefer depth over single_plane unless restraint IS the point.
+  - colorStrategy: monochrome / duotone_accent (base + ONE earned accent) / tonal_range (a tonal ladder of one hue via halftone). Break monochrome when a tension point deserves an accent.
+  - compositionStance: centered_iconic (symmetric/badge — can read static) / asymmetric_tension (off-axis weight + intentional negative space) / full_bleed_immersive (elements run off the print edges). Don't default to centered for every signal — asymmetry + bleed read more premium.
+  These STACK and should reinforce the dominant system: e.g. an "endless grind" signal → linear + ink_grain_distress + tonal_density (heavier toward the hem) + asymmetric_tension.
 
 WORKED EXAMPLE — PAPER-RCK (this is the bar; match this specificity):
   garmentStructure: front_back_narrative
@@ -774,7 +828,7 @@ THE BLIPS DESIGN BAR — the calibration anchor
 Every brief you produce must give BOILER enough specificity to land at the BLIPS bar. The reference design (PAPER-RCK / "AHEAD ON PAPER / BEHIND ON SOMETHING") had 5 specific hex codes with roles, exact text per face, exact font weights + tracking, 2 print separations with what's on each, full-garment bleed. That's the level of specificity to aim for. A brief that says "data dashboard with notification fragments in DM Mono" gives BOILER nothing it can render cleanly. A brief that says exactText.front = "The WhatsApp group that became your second job.", typographySpec = [{surface: "front_center", content: "The WhatsApp group that became your second job.", font: "Syne", weight: 700, tracking: "tight", orientation: "horizontal", size_hint: "hero"}] gives BOILER exactly what it needs to render one clean hero design.
 
 OUTPUT FORMAT
-Valid JSON matching the schema. When refused=true, ALL fields null INCLUDING the garment-system fields (garmentStructure, structureRationale, dominantSystem, systemRationale, narrativeVariable, frontLayout, backLayout) AND the 6 spec fields. When refused=false: all 10 prose section fields within bounds + the garment-system fields (garmentStructure, dominantSystem, systemRationale, structureRationale, frontLayout; narrativeVariable + backLayout when the structure calls for them) + all 6 spec fields. Empty addenda array on initial generation.
+Valid JSON matching the schema. When refused=true, ALL fields null INCLUDING the garment-system fields (garmentStructure, structureRationale, dominantSystem, systemRationale, narrativeVariable, frontLayout, backLayout), the richness-treatment fields (textureStrategy, depthStrategy, colorStrategy, compositionStance, treatmentRationale), AND the 6 spec fields. When refused=false: all 10 prose section fields within bounds + the garment-system fields (garmentStructure, dominantSystem, systemRationale, structureRationale, frontLayout; narrativeVariable + backLayout when the structure calls for them) + the richness-treatment fields (textureStrategy, depthStrategy, colorStrategy, compositionStance, treatmentRationale — ALL populated when refused=false) + all 6 spec fields. Empty addenda array on initial generation.
 
 CHARACTER COUNTS — STRICTLY ENFORCED BY THE SCHEMA
 The schema rejects any section over its max character bound and the API call FAILS. Stay under each max — concision is part of the editorial discipline. Long answers indicate unfocused thinking; tighten and ship.
