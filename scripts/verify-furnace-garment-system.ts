@@ -86,7 +86,7 @@ async function main() {
   };
 
   const { furnaceSkill } = await import("../src/skills/furnace");
-  const { generateObject } = await import("ai");
+  const { generateObject, NoObjectGeneratedError } = await import("ai");
   const { google } = await import("@ai-sdk/google");
 
   const dominantSystems: string[] = [];
@@ -119,6 +119,7 @@ async function main() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const prompt = furnaceSkill.buildPrompt(input as any);
     let obj: Record<string, unknown> | null = null;
+    let lastReason = "unknown";
     for (const model of ["gemini-2.5-pro", "gemini-2.5-flash"]) {
       try {
         const r = await generateObject({
@@ -132,13 +133,33 @@ async function main() {
         console.log(`  (model: ${model})`);
         break;
       } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        console.log(`  ${model} failed: ${msg.slice(0, 80)} — trying next`);
+        // Surface the REAL cause, not just "did not match schema". When the model
+        // returned valid JSON that failed Zod (e.g. a field over its char cap),
+        // re-run safeParse on the raw text to print the exact field + issue —
+        // a 503 and a character-overrun are NOT the same failure (the May 30
+        // richness diagnosis turned on exactly this distinction).
+        let reason = e instanceof Error ? e.message.slice(0, 80) : String(e);
+        if (NoObjectGeneratedError.isInstance(e) && e.text) {
+          try {
+            const z = furnaceSkill.outputSchema.safeParse(JSON.parse(e.text));
+            if (!z.success) {
+              reason =
+                "schema-fail: " +
+                z.error.issues
+                  .map((i) => `[${i.path.join(".")}] ${i.code}`)
+                  .join("; ");
+            }
+          } catch {
+            reason = "model returned non-JSON text";
+          }
+        }
+        lastReason = reason;
+        console.log(`  ${model} failed: ${reason} — trying next`);
       }
     }
 
     if (!obj) {
-      rec(`${sig.code} schema round-trip`, false, "all models failed (likely 503 — re-run)");
+      rec(`${sig.code} schema round-trip`, false, lastReason);
       continue;
     }
     rec(`${sig.code} schema round-trip`, true, "valid object returned");

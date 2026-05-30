@@ -162,7 +162,17 @@ const briefSectionsSchema = z
         "Required when refused=true. Specific failure mode — brand-voice mismatch / cohort wash / culturally opaque / generic-shaped framing / etc. Vague refusals are themselves refusals of the refusal job.",
       ),
 
-    // Visual design sections — all required when not refused, all character-bounded
+    // Visual design sections — all required when not refused, all character-bounded.
+    // NOTE on caps (May 30, 2026): each .max() is a HARD CEILING set ~40% above the
+    // editorial TARGET stated in that field's .describe() ("max N chars"). Gemini does
+    // not honour character counts reliably, and a Zod .max() is a hard reject — so a
+    // cap set AT the editorial target made content-rich signals (esp. front_back_narrative)
+    // fail validation on normal model variance (the May 30 richness-hold root cause:
+    // treatmentRationale + narrativeVariable + placementIntent over-ran their old caps).
+    // The describe() text keeps the tight target so the model still aims concise; the
+    // wider .max() only stops a modest overshoot from failing the whole brief. Do NOT
+    // "tighten" a .max() back down to the describe() number without re-running
+    // scripts/verify-furnace-garment-system.ts ~5× (the failure is probabilistic).
     designDirection: z
       .string()
       .min(200)
@@ -174,7 +184,7 @@ const briefSectionsSchema = z
     tactileIntent: z
       .string()
       .min(100)
-      .max(500)
+      .max(700)
       .nullable()
       .describe(
         "REQUIRED — premium-design rule (max 500 chars). What should the garment FEEL like + COMMUNICATE physically? Use specific material vocabulary (heavyweight cotton, brushed back fleece, corduroy, garment-dyed, etc.). 'Soft cotton' is a failure — be specific. NO GSM numbers in any form (no '320 GSM', no '300-400 GSM range') — use weight WORDS only ('heavyweight', 'mid-weight'). ENGINE Step 1 derives the spec.",
@@ -182,7 +192,7 @@ const briefSectionsSchema = z
     moodAndTone: z
       .string()
       .min(80)
-      .max(400)
+      .max(600)
       .nullable()
       .describe(
         "Emotional register (max 400 chars) — raw / quiet / sardonic / spectral / weighted / declarative / unsettled. Single-thought, no caveats.",
@@ -190,7 +200,7 @@ const briefSectionsSchema = z
     compositionApproach: z
       .string()
       .min(80)
-      .max(400)
+      .max(600)
       .nullable()
       .describe(
         "Composition register (max 400 chars) — Type-led / illustrative / photographic / abstract / mixed / negative-space-heavy / dense / single-statement. The PRIMARY composition register; use mixed only when the design genuinely combines two registers.",
@@ -198,7 +208,7 @@ const briefSectionsSchema = z
     colorTreatment: z
       .string()
       .min(80)
-      .max(450)
+      .max(650)
       .nullable()
       .describe(
         "Color choices + how they sit (max 450 chars). Reference S01 Raw Industrial / S02 Cold Cosmic / S03 Warm Reckoning seasonal palettes OR explicitly justify why this design departs. High-contrast / muted monochrome / wash + accent / decade-palette-anchored.",
@@ -206,7 +216,7 @@ const briefSectionsSchema = z
     typographicTreatment: z
       .string()
       .min(100)
-      .max(500)
+      .max(700)
       .nullable()
       .describe(
         "Typographic notes (max 500 chars). If type-led: which Ink family (Syne display / Cormorant Garamond editorial / DM Mono) + scale (hero / pull-quote / sub-text) + treatment notes (debossed feel, screen-print texture, hand-drawn substitution, broken setting, set-as-quote, set-as-fragment).",
@@ -214,7 +224,7 @@ const briefSectionsSchema = z
     artDirection: z
       .string()
       .min(100)
-      .max(500)
+      .max(700)
       .nullable()
       .describe(
         "Art direction notes (max 500 chars). Illustrative style notes if illustration is involved (drawn / painted / printmaking-influenced / collaged); photo treatment if photo; iconographic system if iconographic. Specific enough that BOILER can render directly.",
@@ -222,7 +232,7 @@ const briefSectionsSchema = z
     referenceAnchors: z
       .string()
       .min(100)
-      .max(500)
+      .max(700)
       .nullable()
       .describe(
         "Visual references this is in conversation with (max 500 chars) — designers, art movements, artifacts (Acne posters, Brutalist editorial, early 90s rave flyers, Daniel Eatock's restraint, etc.). Push past streetwear default — Acne / ALD acceptable but not exclusive.",
@@ -230,7 +240,7 @@ const briefSectionsSchema = z
     placementIntent: z
       .string()
       .min(60)
-      .max(300)
+      .max(500)
       .nullable()
       .describe(
         "Placement intent (max 300 chars). Front-only / back-panel / sleeve hit / wraparound / hem / all-over / inside-tag. Compositional, not technical. Print technique stays at ENGINE Step 1.",
@@ -238,7 +248,7 @@ const briefSectionsSchema = z
     voiceInVisual: z
       .string()
       .min(80)
-      .max(400)
+      .max(600)
       .nullable()
       .describe(
         "Voice in visual (max 400 chars). If text appears in the design itself, how does it read — sharp one-liner / quote / data-as-poem / fragment / unfinished thought? BLIPS voice (observational, calmly confrontational, smirks doesn't shout).",
@@ -287,7 +297,7 @@ const briefSectionsSchema = z
     structureRationale: z
       .string()
       .min(40)
-      .max(300)
+      .max(450)
       .nullable()
       .describe(
         "One-to-two sentences: why the signal's shape calls for the chosen garmentStructure. Null when refused=true.",
@@ -318,7 +328,7 @@ const briefSectionsSchema = z
     systemRationale: z
       .string()
       .min(40)
-      .max(300)
+      .max(450)
       .nullable()
       .describe(
         "One sentence: why this dominant system's STRUCTURE mirrors this signal's tension. Null when refused=true.",
@@ -326,7 +336,7 @@ const briefSectionsSchema = z
     narrativeVariable: z
       .string()
       .min(20)
-      .max(200)
+      .max(320)
       .nullable()
       .describe(
         "ONLY when garmentStructure='front_back_narrative': the single element that CHANGES from front to back to tell the two-beat story (PAPER-RCK: 'the square's position — at the ring origin on front, displaced lower-right on back'). The shared system stays constant; this is the one variable. Null otherwise and when refused=true.",
@@ -388,10 +398,10 @@ const briefSectionsSchema = z
     treatmentRationale: z
       .string()
       .min(30)
-      .max(300)
+      .max(500)
       .nullable()
       .describe(
-        "One-to-two sentences: why this combination of texture/depth/colour/composition fits THIS signal's mood + the chosen dominant system. Null when refused=true.",
+        "One-to-two sentences: why this combination of texture/depth/colour/composition fits THIS signal's mood + the chosen dominant system. Justifies four treatment choices + system fit, so it needs room (up to 500 chars). Null when refused=true.",
       ),
 
     // ─── DESIGN-STAGE SPECIFICATION (Phase 11D FURNACE schema upgrade)
@@ -830,10 +840,10 @@ Every brief you produce must give BOILER enough specificity to land at the BLIPS
 OUTPUT FORMAT
 Valid JSON matching the schema. When refused=true, ALL fields null INCLUDING the garment-system fields (garmentStructure, structureRationale, dominantSystem, systemRationale, narrativeVariable, frontLayout, backLayout), the richness-treatment fields (textureStrategy, depthStrategy, colorStrategy, compositionStance, treatmentRationale), AND the 6 spec fields. When refused=false: all 10 prose section fields within bounds + the garment-system fields (garmentStructure, dominantSystem, systemRationale, structureRationale, frontLayout; narrativeVariable + backLayout when the structure calls for them) + the richness-treatment fields (textureStrategy, depthStrategy, colorStrategy, compositionStance, treatmentRationale — ALL populated when refused=false) + all 6 spec fields. Empty addenda array on initial generation.
 
-CHARACTER COUNTS — STRICTLY ENFORCED BY THE SCHEMA
-The schema rejects any section over its max character bound and the API call FAILS. Stay under each max — concision is part of the editorial discipline. Long answers indicate unfocused thinking; tighten and ship.
+CHARACTER COUNTS — EDITORIAL TARGETS (aim for these; the schema allows modest headroom above)
+These are the lengths to AIM for — concision is part of the editorial discipline, and long answers indicate unfocused thinking. The schema enforces a hard ceiling ~40% above each target so a slight overshoot won't fail the whole brief, but do NOT treat the headroom as licence: write to the target. (Gemini does not count characters reliably; the headroom exists so normal variance near a target doesn't hard-fail the call — not so you can run long.)
 
-  Section maxima (chars):
+  Section targets (chars — aim here):
     brandFitRationale: 600   (refusalReason: same range when refused)
     designDirection:   700   (the hero — most generous bound)
     tactileIntent:     500
@@ -846,6 +856,11 @@ The schema rejects any section over its max character bound and the API call FAI
     voiceInVisual:     400
     placementIntent:   300
     compositionRules:  1200 (max, prose block of the conceptual logic)
+
+  Garment-system + richness-treatment maxima (chars):
+    structureRationale: 300   systemRationale: 300   narrativeVariable: 320
+    frontLayout: 1600   backLayout: 1600
+    treatmentRationale: 500 (justifies 4 treatment dims + system fit — give it room, but stay under)
 
 Aim for 60-80% of max per section. If you find yourself over the max, you're trying to say two things in one section — pick the sharper one.
 
