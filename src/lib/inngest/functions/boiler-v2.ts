@@ -512,6 +512,20 @@ export const boilerV2Generate = inngest.createFunction(
       return row.id;
     });
 
+    // ─── 5b. Fire the mockup-render side-effect (decoupled) ──────────
+    // Composite the flat art onto the configured tee, recolored to the active
+    // garment hex. Separate function (boiler.v2.render-mockup) so a slow or
+    // failed DM render never sinks the design — the design is already
+    // persisted above. Re-rendered per colour when the founder picks a colour.
+    await step.sendEvent("render-mockup-after-generate", {
+      name: "boiler.v2.render-mockup",
+      data: {
+        orgId,
+        designVersionId: versionId,
+        colorwayHex: context.paletteRoles.garment_base,
+      },
+    });
+
     // ─── 6. Auto-retry on verifier failure (low tier only) ───────────
     // Gate fires for: (a) initial fresh generations that failed verification,
     // OR (b) prior auto-retry refines that ALSO failed (so the chain can

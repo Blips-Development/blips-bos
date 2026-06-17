@@ -128,6 +128,42 @@ export async function uploadBase64Image(
 }
 
 /**
+ * Upload a REMOTE image (by URL) to Cloudinary. Cloudinary fetches the URL
+ * server-side, so we never pull the bytes through our own function. Used for
+ * Dynamic Mockups render URLs → our own Cloudinary CDN (so we own the URL,
+ * can apply f_auto,q_auto, and don't depend on DM's CDN cache lifetime).
+ *
+ * Same throw policy as uploadBase64Image — Inngest retry catches transient
+ * errors; the caller decides fail-soft vs. fail-hard.
+ */
+export async function uploadRemoteImage(
+  url: string,
+  options: UploadBase64ImageOptions,
+): Promise<CloudinaryUploadResult> {
+  if (!ensureConfigured()) {
+    throw new Error(
+      "[cloudinary] CLOUDINARY_URL not set — cannot upload remote image.",
+    );
+  }
+  const result = await cloudinary.uploader.upload(url, {
+    folder: options.folder,
+    public_id: options.publicIdHint,
+    overwrite: options.overwrite ?? true,
+    resource_type: "image",
+  });
+  const rawUrl = result.secure_url;
+  return {
+    rawUrl,
+    optimizedUrl: getOptimizedUrl(rawUrl),
+    publicId: result.public_id,
+    format: result.format,
+    bytes: result.bytes,
+    width: result.width,
+    height: result.height,
+  };
+}
+
+/**
  * Inject `/f_auto,q_auto/` between `/upload/` and the version path in a
  * Cloudinary secure URL. This serves WebP/AVIF to browsers that support
  * them (transparently falls back to PNG/JPG) + picks the optimal quality

@@ -92,33 +92,54 @@ export interface ListMockupsResponse {
 }
 
 /**
- * Render request — sent to POST /api/v1/renders. Composites a design (URL or base64)
- * onto a template's smart object, optionally recoloring the garment.
+ * A single asset layer placed on a smart object. Validated against the live
+ * DM API May 20 2026 (scripts/_probe-dm-render): `asset` MUST be an array
+ * (the API 422s on a bare string — "smart_objects.0.asset field must be an
+ * array"). `print_area_preset_uuid` auto-positions the asset into a named
+ * print zone (e.g. the "Center" chest preset) without manual coordinates.
+ */
+export interface RenderAsset {
+  /** URL to the design image (png/jpg/webp). Pass the RAW Cloudinary URL,
+   *  NOT the f_auto,q_auto one — DM fetches it server-side. */
+  url: string;
+  /** How the asset fits the print area. */
+  fit?: "stretch" | "contain" | "cover";
+  /** Named print-zone preset uuid — auto-positions the asset. */
+  print_area_preset_uuid?: string;
+  /** Manual placement (when not using a preset). */
+  position?: { top: number; left: number };
+  size?: { width: number; height: number };
+  rotate?: number;
+}
+
+/**
+ * Render request — sent to POST /api/v1/renders. Composites a design onto a
+ * template's smart object, optionally recoloring the garment via `color`
+ * (verified working: white tee → navy on the BLIPS template).
  */
 export interface RenderRequest {
   mockup_uuid: string;
   smart_objects: Array<{
     uuid: string;
-    asset: string; // URL or data: URI
-    color?: string; // hex with leading #, when recolor_supported
+    /** Array of asset layers (NOT a bare string — the API requires an array). */
+    asset: RenderAsset[];
+    /** Hex (with leading #) garment recolor overlay. */
+    color?: string;
   }>;
-  /** Output format. */
-  format?: "png" | "jpg" | "webp";
-  /** Output dimensions. Caps at 4096×4096 on DM's free + standard tiers. */
-  width?: number;
-  height?: number;
 }
 
+/**
+ * Render response. Validated shape: the render URL lives at
+ * `data.export_path` (NOT a top-level `url`/`render_url`).
+ */
 export interface RenderResponse {
-  /** The CDN-hosted render URL (HTTPS, served from DM's edge cache). */
-  url?: string;
-  render_url?: string;
-  /** Render id for traceability. */
-  uuid?: string;
-  id?: string;
-  /** Echo of the dimensions DM produced. */
-  width?: number;
-  height?: number;
+  data?: {
+    /** The S3-hosted render URL. This is the composited mockup image. */
+    export_path?: string;
+    export_label?: string | null;
+  };
+  success?: boolean;
+  message?: string;
 }
 
 /**
